@@ -1,0 +1,886 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Backtest History | QuantAI Studio</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
+    <script>
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    </script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { 
+                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+                        mono: ['"JetBrains Mono"', 'monospace']
+                    },
+                    colors: {
+                        brand: { 500: '#14b8a6', 600: '#0d9488' },
+                        stackx: { start: '#3B82F6', end: '#8B5CF6' },
+                        surface: { dark: '#0A0A0B', darkBorder: '#1F1F22' }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+        .stackx-gradient { background: linear-gradient(to right, #3b82f6, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        
+        /* Dynamic Glow */
+        .glow-bg { position: fixed; width: 800px; height: 800px; background: radial-gradient(circle, rgba(20,184,166,0.05) 0%, rgba(0,0,0,0) 60%); top: -200px; left: -200px; z-index: -1; pointer-events: none; }
+        .dark .glow-bg { background: radial-gradient(circle, rgba(20,184,166,0.12) 0%, rgba(0,0,0,0) 60%); }
+
+        /* Custom Scrollbar for Code Blocks */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(100, 116, 139, 0.3); border-radius: 4px; }
+        
+        /* Component States */
+        .toast-popup { opacity: 0; pointer-events: none; transform: translateY(20px); transition: all 0.3s ease; }
+        .toast-popup.show { opacity: 1; pointer-events: auto; transform: translateY(0); }
+    </style>
+</head>
+<body class="bg-slate-50 dark:bg-[#0A0A0B] text-slate-900 dark:text-slate-50 antialiased min-h-screen flex flex-col transition-colors duration-300">
+
+    <div class="glow-bg"></div>
+
+    <nav class="sticky top-0 w-full z-50 transition-all duration-300 border-b border-slate-200 dark:border-white/5 bg-white/80 dark:bg-[#0A0A0B]/80 backdrop-blur-md">
+        <div class="max-w-7xl mx-auto px-6">
+            <div class="flex justify-between items-center h-16">
+                
+                <div class="flex items-center gap-6">
+                    <button onclick="window.location.href='/dashboard'" class="flex items-center gap-2 text-xs font-semibold text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 px-3 py-1.5 rounded-lg">
+                        <i class="fas fa-arrow-left"></i> Dashboard
+                    </button>
+                    <a href="/" class="hidden sm:flex items-center space-x-3 hover:opacity-80 transition-opacity">
+                        <div class="w-7 h-7 rounded bg-brand-500 flex items-center justify-center shadow-lg shadow-brand-500/30">
+                            <i class="fas fa-layer-group text-white text-xs"></i>
+                        </div>
+                        <span class="text-lg font-bold tracking-tight leading-none">QuantAI</span>
+                    </a>
+                </div>
+
+                <div class="flex items-center space-x-4">
+                    <div id="pageStats" class="hidden md:flex text-xs text-slate-500 dark:text-slate-400 gap-3 items-center"></div>
+
+                    <button id="themeToggle" class="p-2 rounded-full hover:bg-slate-200 dark:hover:bg-white/10 transition-colors text-slate-600 dark:text-slate-400">
+                        <i class="fas fa-moon dark:hidden"></i>
+                        <i class="fas fa-sun hidden dark:block"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 py-8 flex flex-col">
+        
+        <div class="flex items-center justify-between mb-8">
+            <h1 class="text-2xl md:text-3xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-3">
+                <i class="fas fa-clock-rotate-left text-brand-500"></i> Backtest History
+            </h1>
+            <div id="pageStats" class="md:hidden text-xs text-slate-500 dark:text-slate-400 flex gap-2 items-center bg-white dark:bg-[#111113] border border-slate-200 dark:border-white/10 px-3 py-1.5 rounded-lg"></div>
+        </div>
+
+        <div id="historyCard" class="bg-white dark:bg-[#111113] border border-slate-200 dark:border-surface-darkBorder rounded-3xl shadow-sm overflow-hidden flex-1 flex flex-col">
+            <div class="px-6 py-5 border-b border-slate-200 dark:border-white/5 flex items-center justify-between bg-slate-50 dark:bg-[#0A0A0B]">
+                <h3 class="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    <i class="fas fa-list text-slate-400"></i> All Backtests
+                </h3>
+            </div>
+            
+            <div id="historyList" class="flex-1 overflow-y-auto p-0 relative min-h-[400px]">
+                <div class="absolute inset-0 flex flex-col items-center justify-center text-slate-500">
+                    <i class="fas fa-spinner fa-spin text-3xl mb-4 text-brand-500"></i>
+                    <span class="text-sm font-medium">Loading history...</span>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <div id="detailModal" class="fixed inset-0 bg-slate-900/40 dark:bg-black/60 backdrop-blur-sm z-[100] hidden items-center justify-center p-4 sm:p-6">
+        <div class="bg-slate-50 dark:bg-[#0A0A0B] border border-slate-200 dark:border-white/10 rounded-3xl shadow-2xl w-full max-w-6xl overflow-hidden flex flex-col transform transition-all duration-300 scale-95 opacity-0 max-h-full" id="detailModalInner">
+            
+            <div class="px-6 py-4 border-b border-slate-200 dark:border-white/5 flex items-center justify-between bg-white dark:bg-[#111113] z-10 sticky top-0">
+                <h2 class="text-lg sm:text-xl font-bold text-slate-900 dark:text-white tracking-tight flex items-center gap-3">
+                    <i class="fas fa-chart-line text-brand-500"></i>
+                    <span id="detailTitle" class="truncate max-w-[200px] sm:max-w-md">Strategy Details</span>
+                </h2>
+                <div class="flex items-center gap-2 sm:gap-3">
+                    <button onclick="downloadDetailPDF()" class="hidden sm:flex items-center gap-2 bg-brand-500 hover:bg-brand-600 text-white px-4 py-2 rounded-lg text-xs font-semibold transition-colors shadow-sm">
+                        <i class="fas fa-file-pdf"></i> PDF
+                    </button>
+                    <button onclick="downloadDetailCode()" class="hidden sm:flex items-center gap-2 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 text-slate-700 dark:text-white px-4 py-2 rounded-lg text-xs font-semibold transition-colors border border-slate-200 dark:border-transparent">
+                        <i class="fa-brands fa-python text-blue-500"></i> Code
+                    </button>
+                    <button onclick="closeDetail()" class="text-slate-400 hover:text-slate-600 dark:hover:text-white bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 rounded-lg w-9 h-9 flex items-center justify-center transition-colors">
+                        <i class="fas fa-xmark"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div id="detailBody" class="p-4 sm:p-6 overflow-y-auto flex-1 flex flex-col gap-4 sm:gap-6">
+                </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast-popup fixed bottom-6 right-6 bg-white dark:bg-[#161618] border border-slate-200 dark:border-white/10 rounded-xl shadow-2xl p-4 flex items-start gap-3 z-[200] max-w-sm">
+        <div id="toastIcon" class="mt-0.5 text-lg"></div>
+        <div class="flex-1">
+            <h4 id="tttl" class="text-sm font-bold text-slate-900 dark:text-white mb-0.5">Notification</h4>
+            <p id="tmsg" class="text-xs text-slate-500 dark:text-slate-400">Message goes here</p>
+        </div>
+        <button onclick="closeToast()" class="text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors">
+            <i class="fas fa-xmark"></i>
+        </button>
+    </div>
+
+    <script>
+        var currentStrategy = null;
+        var yrChart = null;
+        const MONTH_MAP = {
+            'jan': 0, 'january': 0, '01': 0, '1': 0,
+            'feb': 1, 'february': 1, '02': 1, '2': 1,
+            'mar': 2, 'march': 2, '03': 2, '3': 2,
+            'apr': 3, 'april': 3, '04': 3, '4': 3,
+            'may': 4, '05': 4, '5': 4,
+            'jun': 5, 'june': 5, '06': 5, '6': 5,
+            'jul': 6, 'july': 6, '07': 6, '7': 6,
+            'aug': 7, 'august': 7, '08': 7, '8': 7,
+            'sep': 8, 'september': 8, '09': 8, '9': 8,
+            'oct': 9, 'october': 9, '10': 9,
+            'nov': 10, 'november': 10, '11': 10,
+            'dec': 11, 'december': 11, '12': 11
+        };
+
+        document.addEventListener('DOMContentLoaded', function() {
+            // Theme Toggle
+            document.getElementById('themeToggle').addEventListener('click', () => {
+                document.documentElement.classList.toggle('dark');
+                localStorage.theme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+                // Redraw chart if open to match theme
+                if (currentStrategy && yrChart) renderYearlyChart(currentStrategy.yearlyReturns);
+            });
+
+            // Modal backdrop close
+            document.getElementById('detailModal').addEventListener('click', function(e) {
+                if (e.target === this) closeDetail();
+            });
+
+            loadHistory();
+            loadStats();
+        });
+
+        async function loadHistory() {
+            try {
+                const res = await fetch('/api/history?limit=50');
+                const data = await res.json();
+                const container = document.getElementById('historyList');
+                
+                if (!data.success || !data.strategies.length) {
+                    container.innerHTML = `
+                        <div class="absolute inset-0 flex flex-col items-center justify-center text-center p-6">
+                            <div class="w-16 h-16 bg-slate-100 dark:bg-white/5 rounded-2xl flex items-center justify-center text-3xl text-slate-400 mb-4 shadow-sm border border-slate-200 dark:border-white/10">
+                                <i class="fas fa-inbox"></i>
+                            </div>
+                            <h4 class="text-base font-bold text-slate-900 dark:text-white mb-1">No backtests yet</h4>
+                            <p class="text-sm text-slate-500">Run your first backtest from the dashboard to see it here.</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                container.innerHTML = `<div class="flex flex-col divide-y divide-slate-100 dark:divide-white/5">${data.strategies.map(s => {
+                    const planIcon = s.plan === 'quick' ? 'fa-binoculars' : s.plan === 'smart' ? 'fa-chart-line' : 'fa-flask';
+                    const iconColor = s.plan === 'quick' ? 'text-blue-500 bg-blue-50 dark:bg-blue-500/10' : s.plan === 'smart' ? 'text-brand-500 bg-brand-50 dark:bg-brand-500/10' : 'text-purple-500 bg-purple-50 dark:bg-purple-500/10';
+                    const isSuccess = s.status === 'completed';
+                    const badgeColor = isSuccess ? 'bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400 border-green-200 dark:border-green-500/30' : 'bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400 border-red-200 dark:border-red-500/30';
+                    const date = new Date(s.createdAt).toLocaleDateString();
+                    
+                    return `
+                        <div class="flex items-center justify-between p-4 sm:p-5 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors cursor-pointer group" onclick="openDetail('${s._id}')">
+                            <div class="flex items-center gap-4 min-w-0">
+                                <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${iconColor}">
+                                    <i class="fas ${planIcon} text-lg"></i>
+                                </div>
+                                <div class="flex flex-col min-w-0">
+                                    <div class="text-sm font-bold text-slate-900 dark:text-white truncate mb-1 group-hover:text-brand-500 transition-colors">${s.assets.join(', ') || 'No assets'}</div>
+                                    <div class="flex flex-wrap items-center gap-2 text-xs text-slate-500">
+                                        <span class="bg-slate-100 dark:bg-[#161618] px-2 py-0.5 rounded text-[10px] font-semibold">${s.timeframe}</span>
+                                        <span>•</span>
+                                        <span>${date}</span>
+                                        <span class="hidden sm:inline">•</span>
+                                        <span class="hidden sm:inline font-mono font-semibold text-slate-400">${s.creditsUsed} credits</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-3 ml-4 flex-shrink-0">
+                                <span class="text-[9px] font-bold uppercase tracking-wider px-2 py-1 rounded-md border ${badgeColor}">${s.status}</span>
+                                <div class="hidden sm:flex items-center gap-2">
+                                    <button onclick="event.stopPropagation(); downloadStrategy('${s._id}')" class="w-8 h-8 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-white/10 transition-colors" title="Download PDF">
+                                        <i class="fas fa-file-pdf"></i>
+                                    </button>
+                                    <button onclick="event.stopPropagation(); deleteStrategy('${s._id}')" class="w-8 h-8 rounded-lg flex items-center justify-center text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-500/20 transition-colors" title="Delete">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('')}</div>`;
+                
+            } catch (err) {
+                console.error('Error loading history:', err);
+                document.getElementById('historyList').innerHTML = `
+                    <div class="absolute inset-0 flex flex-col items-center justify-center text-center p-6">
+                        <i class="fas fa-circle-exclamation text-3xl text-red-500 mb-4"></i>
+                        <h4 class="text-base font-bold text-slate-900 dark:text-white">Failed to load history</h4>
+                    </div>
+                `;
+            }
+        }
+
+        async function loadStats() {
+            try {
+                const res = await fetch('/api/history/stats/summary');
+                const data = await res.json();
+                
+                if (data.success) {
+                    const statsHtml = `
+                        <span class="bg-slate-100 dark:bg-white/5 px-2 py-1 rounded"><strong class="text-slate-700 dark:text-slate-300">${data.stats.completedRuns}</strong> completed</span>
+                        <span class="hidden sm:inline text-slate-300 dark:text-slate-700">•</span>
+                        <span class="bg-brand-50 dark:bg-brand-500/10 text-brand-600 dark:text-brand-400 px-2 py-1 rounded"><strong class="font-mono">${data.stats.totalCreditsUsed}</strong> credits used</span>
+                    `;
+                    // Update all elements with id pageStats (using querySelectorAll since there are two for responsive design)
+                    document.querySelectorAll('#pageStats').forEach(el => el.innerHTML = statsHtml);
+                }
+            } catch (err) {
+                console.error('Error loading stats:', err);
+            }
+        }
+
+        async function openDetail(id) {
+            try {
+                const res = await fetch('/api/history/' + id);
+                const data = await res.json();
+                
+                if (!data.success) {
+                    showToast('Strategy not found', 'er');
+                    return;
+                }
+                
+                currentStrategy = data.strategy;
+                renderDetail();
+                
+                const modal = document.getElementById('detailModal');
+                const inner = document.getElementById('detailModalInner');
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+                setTimeout(() => {
+                    inner.classList.remove('scale-95', 'opacity-0');
+                    inner.classList.add('scale-100', 'opacity-100');
+                }, 10);
+                
+            } catch (err) {
+                console.error('Error loading strategy:', err);
+                showToast('Failed to load strategy', 'er');
+            }
+        }
+
+        function closeDetail() {
+            const modal = document.getElementById('detailModal');
+            const inner = document.getElementById('detailModalInner');
+            inner.classList.remove('scale-100', 'opacity-100');
+            inner.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => {
+                modal.classList.remove('flex');
+                modal.classList.add('hidden');
+                currentStrategy = null;
+                if (yrChart) {
+                    yrChart.destroy();
+                    yrChart = null;
+                }
+            }, 300);
+        }
+
+        function renderDetail() {
+            const s = currentStrategy;
+            if (!s) return;
+            
+            const planIcon = s.plan === 'quick' ? 'fa-binoculars' : s.plan === 'smart' ? 'fa-chart-line' : 'fa-flask';
+            const planColor = s.plan === 'quick' ? 'text-blue-500 bg-blue-50 dark:bg-blue-500/10 border-blue-200 dark:border-blue-500/30' : s.plan === 'smart' ? 'text-brand-500 bg-brand-50 dark:bg-brand-500/10 border-brand-200 dark:border-brand-500/30' : 'text-purple-500 bg-purple-50 dark:bg-purple-500/10 border-purple-200 dark:border-purple-500/30';
+            const isSuccess = s.status === 'completed';
+            const badgeColor = isSuccess ? 'bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400 border-green-200 dark:border-green-500/30' : 'bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400 border-red-200 dark:border-red-500/30';
+            
+            document.getElementById('detailTitle').textContent = s.assets.join(', ') || 'Strategy Analysis';
+            
+            const m = s.metrics || {};
+            const totalReturn = parseFloat(m.totalReturn || 0);
+            const cagr = parseFloat(m.cagr || 0);
+            
+            document.getElementById('detailBody').innerHTML = `
+                <div class="bg-white dark:bg-[#111113] border border-slate-200 dark:border-white/5 rounded-2xl overflow-hidden shadow-sm">
+                    <div class="px-5 py-4 flex items-center justify-between border-b border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-[#0A0A0B]">
+                        <h3 class="font-bold text-slate-900 dark:text-white flex items-center gap-2 text-sm"><i class="fas fa-circle-info text-slate-400"></i> Strategy Overview</h3>
+                        <span class="text-[9px] font-bold uppercase tracking-wider px-2 py-1 rounded-md border ${badgeColor}">${s.status}</span>
+                    </div>
+                    <div class="p-5">
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+                            <div class="bg-slate-50 dark:bg-[#0A0A0B] border border-slate-200 dark:border-white/5 rounded-xl p-4 text-center">
+                                <div class="text-xl sm:text-2xl font-bold font-mono mb-1 ${totalReturn >= 0 ? 'text-green-500' : 'text-red-500'}">${m.totalReturn || '--'}</div>
+                                <div class="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Total Return</div>
+                            </div>
+                            <div class="bg-slate-50 dark:bg-[#0A0A0B] border border-slate-200 dark:border-white/5 rounded-xl p-4 text-center">
+                                <div class="text-xl sm:text-2xl font-bold font-mono mb-1 ${cagr >= 0 ? 'text-green-500' : 'text-red-500'}">${m.cagr || '--'}</div>
+                                <div class="text-[9px] font-bold text-slate-500 uppercase tracking-wider">CAGR</div>
+                            </div>
+                            <div class="bg-slate-50 dark:bg-[#0A0A0B] border border-slate-200 dark:border-white/5 rounded-xl p-4 text-center">
+                                <div class="text-xl sm:text-2xl font-bold font-mono mb-1 text-red-500">${m.maxDrawdown || '--'}</div>
+                                <div class="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Max Drawdown</div>
+                            </div>
+                            <div class="bg-slate-50 dark:bg-[#0A0A0B] border border-slate-200 dark:border-white/5 rounded-xl p-4 text-center">
+                                <div class="text-xl sm:text-2xl font-bold font-mono mb-1 text-slate-800 dark:text-white">${m.totalTrades || '--'}</div>
+                                <div class="text-[9px] font-bold text-slate-500 uppercase tracking-wider">Total Trades</div>
+                            </div>
+                        </div>
+                        <div class="flex flex-wrap gap-2">
+                            <span class="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1.5 rounded-md border flex items-center gap-1.5 ${planColor}"><i class="fas ${planIcon}"></i> ${s.plan}</span>
+                            <span class="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1.5 rounded-md border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-[#161618] text-slate-600 dark:text-slate-300 flex items-center gap-1.5"><i class="fas fa-clock text-slate-400"></i> ${s.timeframe}</span>
+                            <span class="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1.5 rounded-md border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-[#161618] text-slate-600 dark:text-slate-300 flex items-center gap-1.5"><i class="fas fa-coins text-brand-500"></i> ${s.creditsUsed} credits</span>
+                            <span class="text-[10px] font-bold uppercase tracking-wider px-2.5 py-1.5 rounded-md border border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-[#161618] text-slate-600 dark:text-slate-300 flex items-center gap-1.5"><i class="fas fa-calendar text-slate-400"></i> ${new Date(s.createdAt).toLocaleDateString()}</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="grid lg:grid-cols-2 gap-4 sm:gap-6">
+                    
+                    <div class="bg-white dark:bg-[#111113] border border-slate-200 dark:border-white/5 rounded-2xl overflow-hidden shadow-sm flex flex-col">
+                        <div class="px-5 py-4 border-b border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-[#0A0A0B]">
+                            <h3 class="font-bold text-slate-900 dark:text-white flex items-center gap-2 text-sm"><i class="fas fa-chart-pie text-purple-500"></i> Performance Metrics</h3>
+                        </div>
+                        <div class="p-5 flex-1 flex flex-col gap-1">
+                            ${renderMetricRow('Start Date', m.startDate)}
+                            ${renderMetricRow('End Date', m.endDate)}
+                            ${renderMetricRow('Timeframe', m.timeframe || s.timeframe)}
+                            ${renderMetricRow('Total Return (%)', m.totalReturn, true)}
+                            ${renderMetricRow('CAGR (%)', m.cagr, true)}
+                            ${renderMetricRow('Max Drawdown (%)', m.maxDrawdown, false)}
+                            ${renderMetricRow('Win Rate (%)', m.winRate)}
+                            ${renderMetricRow('Profit Factor', m.profitFactor)}
+                            ${renderMetricRow('Sharpe Ratio', m.sharpeRatio)}
+                            ${renderMetricRow('Total Trades', m.totalTrades)}
+                        </div>
+                    </div>
+
+                    <div class="bg-white dark:bg-[#111113] border border-slate-200 dark:border-white/5 rounded-2xl overflow-hidden shadow-sm flex flex-col">
+                        <div class="px-5 py-4 border-b border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-[#0A0A0B]">
+                            <h3 class="font-bold text-slate-900 dark:text-white flex items-center gap-2 text-sm"><i class="fas fa-pen-to-square text-blue-500"></i> Strategy Logic</h3>
+                        </div>
+                        <div class="p-5 flex-1 bg-slate-50/50 dark:bg-[#0A0A0B]/50 overflow-y-auto max-h-[350px]">
+                            <p class="text-sm leading-relaxed text-slate-600 dark:text-slate-300 whitespace-pre-wrap">${escapeHtml(s.strategyLogic || 'No strategy logic provided')}</p>
+                        </div>
+                    </div>
+
+                </div>
+
+                <div class="grid lg:grid-cols-2 gap-4 sm:gap-6">
+                    
+                    <div class="bg-white dark:bg-[#111113] border border-slate-200 dark:border-white/5 rounded-2xl overflow-hidden shadow-sm">
+                        <div class="px-5 py-4 border-b border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-[#0A0A0B]">
+                            <h3 class="font-bold text-slate-900 dark:text-white flex items-center gap-2 text-sm"><i class="fas fa-chart-column text-brand-500"></i> Yearly Returns</h3>
+                        </div>
+                        <div class="p-4 h-[280px] relative">
+                            <canvas id="yrChart"></canvas>
+                        </div>
+                    </div>
+
+                    <div class="bg-white dark:bg-[#111113] border border-slate-200 dark:border-white/5 rounded-2xl overflow-hidden shadow-sm flex flex-col">
+                        <div class="px-5 py-4 border-b border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-[#0A0A0B]">
+                            <h3 class="font-bold text-slate-900 dark:text-white flex items-center gap-2 text-sm"><i class="fas fa-table-cells text-yellow-500"></i> Monthly Heatmap</h3>
+                        </div>
+                        <div class="p-4 flex-1 overflow-x-auto">
+                            <div id="hmCont" class="min-w-[400px]"></div>
+                        </div>
+                        <div class="px-5 py-3 border-t border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-[#0A0A0B] flex items-center gap-3 text-xs text-slate-500 font-semibold uppercase tracking-wider">
+                            <span>Loss</span>
+                            <div class="flex-1 h-2 flex gap-1">
+                                <span class="flex-1 bg-red-600 rounded-sm"></span>
+                                <span class="flex-1 bg-red-400 rounded-sm"></span>
+                                <span class="flex-1 bg-red-300 rounded-sm"></span>
+                                <span class="flex-1 bg-slate-200 dark:bg-slate-700 rounded-sm"></span>
+                                <span class="flex-1 bg-green-300 rounded-sm"></span>
+                                <span class="flex-1 bg-green-500 rounded-sm"></span>
+                                <span class="flex-1 bg-green-700 rounded-sm"></span>
+                            </div>
+                            <span>Gain</span>
+                        </div>
+                    </div>
+
+                </div>
+
+                <div class="bg-slate-900 border border-slate-700 rounded-2xl overflow-hidden shadow-xl mb-4">
+                    <div class="px-5 py-4 border-b border-slate-800 bg-[#0A0A0B] flex items-center justify-between">
+                        <h3 class="font-bold text-white flex items-center gap-2 text-sm"><i class="fa-brands fa-python text-blue-400"></i> Generated Python Code</h3>
+                        <button onclick="downloadDetailCode()" class="text-xs text-slate-400 hover:text-white transition-colors flex items-center gap-1.5"><i class="fas fa-download"></i> Download .py</button>
+                    </div>
+                    <div class="p-5 overflow-auto max-h-[400px]">
+                        <pre class="font-mono text-xs text-slate-300 leading-relaxed">${escapeHtml(s.generatedCode || 'Code not available')}</pre>
+                    </div>
+                </div>
+
+                <div class="flex sm:hidden flex-col gap-3 mt-2">
+                    <button onclick="downloadDetailPDF()" class="w-full flex items-center justify-center gap-2 bg-brand-500 text-white px-4 py-3 rounded-xl text-sm font-semibold shadow-sm">
+                        <i class="fas fa-file-pdf"></i> Download PDF Report
+                    </button>
+                    <button onclick="downloadDetailCode()" class="w-full flex items-center justify-center gap-2 bg-slate-100 dark:bg-white/5 text-slate-700 dark:text-white px-4 py-3 rounded-xl text-sm font-semibold border border-slate-200 dark:border-transparent">
+                        <i class="fa-brands fa-python text-blue-500"></i> Download Python Code
+                    </button>
+                </div>
+            `;
+            
+            if (s.yearlyReturns && s.yearlyReturns.length > 0) {
+                setTimeout(() => renderYearlyChart(s.yearlyReturns), 50); // Small timeout to ensure canvas is in DOM
+            }
+            
+            if (s.monthlyReturns && s.monthlyReturns.length > 0) {
+                renderHeatmap(s.monthlyReturns);
+            }
+        }
+
+        function renderMetricRow(key, value, isPercent) {
+            if (!value && value !== 0) return '';
+            let vc = 'text-slate-900 dark:text-white'; // Default
+            if (key.indexOf('Return') !== -1 || key.indexOf('CAGR') !== -1) {
+                const n = parseFloat(value);
+                if (!isNaN(n)) vc = n >= 0 ? 'text-green-500' : 'text-red-500';
+            }
+            if (key.indexOf('Drawdown') !== -1) vc = 'text-red-500';
+            
+            const ico = {
+                'Start Date':'fa-calendar-plus','End Date':'fa-calendar-check','Timeframe':'fa-clock',
+                'Total Return (%)':'fa-percent','CAGR (%)':'fa-arrow-trend-up','Max Drawdown (%)':'fa-arrow-trend-down',
+                'Win Rate (%)':'fa-bullseye','Profit Factor':'fa-scale-balanced','Sharpe Ratio':'fa-chart-line',
+                'Total Trades':'fa-repeat'
+            }[key] || 'fa-circle-dot';
+            
+            return `
+                <div class="flex items-center justify-between py-2.5 border-b border-slate-100 dark:border-white/5 last:border-0">
+                    <span class="text-sm text-slate-500 dark:text-slate-400 flex items-center gap-2.5"><i class="fas ${ico} w-4 text-center text-slate-300 dark:text-slate-600"></i> ${escapeHtml(key)}</span>
+                    <span class="font-mono text-sm font-bold ${vc}">${escapeHtml(value)}${isPercent ? '%' : ''}</span>
+                </div>
+            `;
+        }
+
+        function renderYearlyChart(yearlyReturns) {
+            if (yrChart) yrChart.destroy();
+            const canvas = document.getElementById('yrChart');
+            if(!canvas) return;
+            const ctx = canvas.getContext('2d');
+            
+            const labels = yearlyReturns.map(d => d.year);
+            const values = yearlyReturns.map(d => parseFloat(d.value) || 0);
+            
+            // Adjust colors based on theme
+            const isDark = document.documentElement.classList.contains('dark');
+            const gridColor = isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)';
+            const textColor = isDark ? '#94A3B8' : '#64748B';
+            
+            const colors = values.map(v => v >= 0 ? '#10B981' : '#EF4444'); // Tailwind Green-500 / Red-500
+            
+            yrChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Return (%)',
+                        data: values,
+                        backgroundColor: colors,
+                        borderRadius: 6,
+                        borderSkipped: false,
+                        barThickness: 'flex',
+                        maxBarThickness: 40
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: isDark ? '#111113' : '#FFFFFF',
+                            titleColor: isDark ? '#F8FAFC' : '#0F172A',
+                            bodyColor: isDark ? '#94A3B8' : '#475569',
+                            borderColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)',
+                            borderWidth: 1,
+                            padding: 10,
+                            titleFont: { family: "'Plus Jakarta Sans', sans-serif", size: 13 },
+                            bodyFont: { family: "'JetBrains Mono', monospace", size: 12 },
+                            callbacks: { label: function(c) { return c.parsed.y.toFixed(2) + '%'; } }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            grid: { color: gridColor, drawBorder: false },
+                            ticks: { color: textColor, font: { size: 11, family: "'JetBrains Mono'" }, callback: function(v) { return v + '%'; }, padding: 10 }
+                        },
+                        x: { 
+                            grid: { display: false, drawBorder: false }, 
+                            ticks: { color: textColor, font: { size: 12, family: "'Plus Jakarta Sans'" }, padding: 5 } 
+                        }
+                    }
+                }
+            });
+        }
+
+        function renderHeatmap(monthlyReturns) {
+            const MH = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+            const cont = document.getElementById('hmCont');
+            if (!cont) return;
+            
+            const yd = {};
+            monthlyReturns.forEach(d => {
+                const year = d.year || new Date().getFullYear().toString();
+                let monthIndex = d.monthIndex;
+                
+                if (monthIndex === undefined || monthIndex === null) {
+                    if (d.month) {
+                        const monthStr = d.month.split('-')[0].toLowerCase();
+                        monthIndex = MONTH_MAP[monthStr];
+                    }
+                }
+                
+                monthIndex = parseInt(monthIndex);
+                if (isNaN(monthIndex) || monthIndex < 0 || monthIndex > 11) monthIndex = 0;
+                
+                const value = parseFloat(d.value) || 0;
+                
+                if (!yd[year]) yd[year] = new Array(12).fill(null);
+                yd[year][monthIndex] = value;
+            });
+            
+            const years = Object.keys(yd).sort();
+            
+            let h = `<div class="grid grid-cols-[50px_repeat(12,1fr)] gap-1 md:gap-1.5 w-full">`;
+            
+            // Header Row
+            h += `<div></div>`; 
+            MH.forEach(m => { h += `<div class="text-center text-[10px] font-bold text-slate-400 uppercase tracking-wider py-1">${m}</div>`; });
+            
+            // Data Rows
+            years.forEach(yr => {
+                h += `<div class="flex items-center justify-end pr-3 text-[11px] font-bold text-slate-500 font-mono">${yr}</div>`;
+                for (let j = 0; j < 12; j++) {
+                    const v = yd[yr][j];
+                    if (v === null || v === undefined) {
+                        h += `<div class="aspect-square rounded-md bg-slate-100 dark:bg-white/5"></div>`;
+                    } else {
+                        const cl = hmC(v);
+                        const dv = v >= 0 ? '+' + v.toFixed(1) : v.toFixed(1);
+                        h += `<div class="aspect-square rounded-md flex items-center justify-center font-mono text-[9px] sm:text-[10px] font-bold text-white cursor-pointer hover:scale-110 hover:shadow-lg transition-all z-10" style="background:${cl}" title="${yr} ${MH[j]}: ${v.toFixed(2)}%">${dv}</div>`;
+                    }
+                }
+            });
+            
+            cont.innerHTML = h + `</div>`;
+        }
+
+        function hmC(v) {
+            const val = parseFloat(v) || 0;
+            if (val < -3) return '#DC2626'; // Red 600
+            if (val < -1) return '#F87171'; // Red 400
+            if (val < 0) return '#FCA5A5';  // Red 300
+            if (val === 0) return document.documentElement.classList.contains('dark') ? '#334155' : '#E2E8F0'; // Slate 700/200
+            if (val < 1) return '#86EFAC';  // Green 300
+            if (val < 3) return '#22C55E';  // Green 500
+            return '#15803D';               // Green 700
+        }
+
+        function escapeHtml(s) {
+            return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        }
+
+        async function downloadStrategy(id) {
+            try {
+                const res = await fetch('/api/history/' + id);
+                const data = await res.json();
+                
+                if (!data.success) {
+                    showToast('Strategy not found', 'er');
+                    return;
+                }
+                
+                generatePDF(data.strategy);
+                showToast('PDF downloaded successfully', 'ok');
+                
+            } catch (err) {
+                console.error('Error downloading:', err);
+                showToast('Download failed', 'er');
+            }
+        }
+
+        function downloadDetailPDF() {
+            if (!currentStrategy) {
+                showToast('No strategy loaded', 'er');
+                return;
+            }
+            generatePDF(currentStrategy);
+            showToast('PDF downloaded successfully', 'ok');
+        }
+
+        function downloadDetailCode() {
+            if (!currentStrategy || !currentStrategy.generatedCode) {
+                showToast('Code not available', 'er');
+                return;
+            }
+            const blob = new Blob([currentStrategy.generatedCode], { type: 'text/x-python' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'strategy_' + currentStrategy._id + '.py';
+            a.click();
+            URL.revokeObjectURL(url);
+            showToast('Code downloaded successfully', 'ok');
+        }
+
+        // PDF Generation Logic remains untouched for compatibility
+        function generatePDF(s) {
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            // Header
+            doc.setFillColor(15, 36, 68);
+            doc.rect(0, 0, 210, 35, 'F');
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(22);
+            doc.setFont('helvetica', 'bold');
+            doc.text('QuantAI Studio', 14, 20);
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'normal');
+            doc.text('Backtest Report', 14, 28);
+            doc.setTextColor(100, 116, 139);
+            doc.setFontSize(9);
+            doc.text('Generated: ' + new Date().toLocaleString(), 14, 35);
+            
+            let y = 45;
+            
+            // Strategy Information
+            doc.setTextColor(15, 36, 68);
+            doc.setFontSize(13);
+            doc.setFont('helvetica', 'bold');
+            doc.text('STRATEGY INFORMATION', 14, y);
+            y += 8;
+            doc.setFontSize(10);
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(51, 65, 85);
+            
+            const planNames = {quick:'Quick',smart:'Smart',research:'Research'};
+            const infoData = [
+                ['Backtest Tier:', (planNames[s.plan] || s.plan) + ' (' + s.creditsUsed + ' credits)'],
+                ['Asset(s):', s.assets.join(', ') || 'N/A'],
+                ['Timeframe:', s.timeframe],
+                ['Status:', s.status.toUpperCase()],
+                ['Created:', new Date(s.createdAt).toLocaleDateString()]
+            ];
+            
+            infoData.forEach(function(row){
+                doc.setFont('helvetica', 'bold');
+                doc.text(row[0], 14, y);
+                doc.setFont('helvetica', 'normal');
+                doc.text(row[1], 70, y);
+                y += 6;
+            });
+            
+            // Strategy Logic
+            y += 5;
+            doc.setFont('helvetica', 'bold');
+            doc.text('STRATEGY LOGIC', 14, y);
+            y += 8;
+            doc.setFont('helvetica', 'normal');
+            if(s.strategyLogic && s.strategyLogic.trim()){
+                const splitText = doc.splitTextToSize(s.strategyLogic.trim(), 180);
+                doc.text(splitText, 14, y);
+                y += (splitText.length * 5) + 5;
+            }
+            
+            // Performance Metrics
+            y += 5;
+            if(y > 250){ doc.addPage(); y = 20; }
+            doc.setFillColor(20, 184, 166); // Brand 500
+            doc.rect(0, y-5, 210, 8, 'F');
+            doc.setTextColor(255, 255, 255);
+            doc.setFont('helvetica', 'bold');
+            doc.text('PERFORMANCE METRICS', 14, y);
+            y += 10;
+            doc.setTextColor(51, 65, 85);
+            
+            const m = s.metrics || {};
+            const metricsData = [
+                ['Total Return', m.totalReturn || 'N/A'],
+                ['CAGR', m.cagr || 'N/A'],
+                ['Max Drawdown', m.maxDrawdown || 'N/A'],
+                ['Win Rate', m.winRate || 'N/A'],
+                ['Profit Factor', m.profitFactor || 'N/A'],
+                ['Sharpe Ratio', m.sharpeRatio || 'N/A'],
+                ['Total Trades', m.totalTrades || 'N/A']
+            ];
+            
+            metricsData.forEach(function(row){
+                doc.setFont('helvetica', 'bold');
+                doc.text(row[0], 14, y);
+                doc.setFont('helvetica', 'normal');
+                const val = String(row[1]);
+                if(val !== 'N/A'){
+                    const numVal = parseFloat(val.replace('%',''));
+                    if(row[0].indexOf('Return') !== -1 || row[0].indexOf('CAGR') !== -1){
+                        doc.setTextColor(numVal >= 0 ? 16 : 239, numVal >= 0 ? 185 : 68, numVal >= 0 ? 129 : 68);
+                    } else if(row[0].indexOf('Drawdown') !== -1){
+                        doc.setTextColor(239, 68, 68);
+                    } else {
+                        doc.setTextColor(51, 65, 85);
+                    }
+                }
+                doc.text(val, 70, y);
+                doc.setTextColor(51, 65, 85);
+                y += 6;
+            });
+            
+            // Yearly Returns
+            y += 5;
+            if(y > 250){ doc.addPage(); y = 20; }
+            doc.setFillColor(139, 92, 246); // Purple 500
+            doc.rect(0, y-5, 210, 8, 'F');
+            doc.setTextColor(255, 255, 255);
+            doc.setFont('helvetica', 'bold');
+            doc.text('YEARLY RETURNS', 14, y);
+            y += 10;
+            doc.setTextColor(51, 65, 85);
+            doc.setFont('helvetica', 'normal');
+            
+            if(s.yearlyReturns && s.yearlyReturns.length > 0){
+                doc.text('Year', 14, y);
+                doc.text('Return (%)', 70, y);
+                y += 6;
+                doc.setLineWidth(0.5);
+                doc.line(14, y-2, 120, y-2);
+                y += 2;
+                
+                s.yearlyReturns.forEach(function(d){
+                    const numVal = parseFloat(d.value) || 0;
+                    doc.setTextColor(numVal >= 0 ? 16 : 239, numVal >= 0 ? 185 : 68, numVal >= 0 ? 129 : 68);
+                    doc.text(String(d.year), 14, y);
+                    doc.text((numVal >= 0 ? '+' : '') + numVal.toFixed(2) + '%', 70, y);
+                    y += 5;
+                });
+                doc.setTextColor(51, 65, 85);
+            }
+            
+            // Monthly Returns
+            y += 5;
+            if(y > 250){ doc.addPage(); y = 20; }
+            doc.setFillColor(59, 130, 246); // Blue 500
+            doc.rect(0, y-5, 210, 8, 'F');
+            doc.setTextColor(255, 255, 255);
+            doc.setFont('helvetica', 'bold');
+            doc.text('MONTHLY RETURNS', 14, y);
+            y += 10;
+            doc.setTextColor(51, 65, 85);
+            doc.setFont('helvetica', 'normal');
+            
+            if(s.monthlyReturns && s.monthlyReturns.length > 0){
+                doc.text('Month', 14, y);
+                doc.text('Year', 70, y);
+                doc.text('Return (%)', 110, y);
+                y += 6;
+                doc.setLineWidth(0.5);
+                doc.line(14, y-2, 160, y-2);
+                y += 2;
+                
+                const last12 = s.monthlyReturns.slice(-12);
+                last12.forEach(function(d){
+                    const numVal = parseFloat(d.value) || 0;
+                    doc.setTextColor(numVal >= 0 ? 16 : 239, numVal >= 0 ? 185 : 68, numVal >= 0 ? 129 : 68);
+                    doc.text(d.month || 'N/A', 14, y);
+                    doc.text(String(d.year || 'N/A'), 70, y);
+                    doc.text((numVal >= 0 ? '+' : '') + numVal.toFixed(2) + '%', 110, y);
+                    y += 5;
+                });
+                doc.setTextColor(51, 65, 85);
+            }
+            
+            // Footer
+            const pageCount = doc.internal.getNumberOfPages();
+            for(let i = 1; i <= pageCount; i++){
+                doc.setPage(i);
+                doc.setFontSize(8);
+                doc.setTextColor(150, 150, 150);
+                doc.text('QuantAI Studio - Page ' + i + ' of ' + pageCount, 105, 290, {align: 'center'});
+            }
+            
+            const timestamp = new Date().toISOString().slice(0,19).replace(/:/g,'-');
+            doc.save('backtest_' + (s.assets.length ? s.assets.join('-') : 'strategy') + '_' + timestamp + '.pdf');
+        }
+
+        async function deleteStrategy(id) {
+            if (!confirm('Are you sure you want to delete this backtest? This action cannot be undone.')) return;
+            
+            try {
+                const res = await fetch('/api/history/' + id, { method: 'DELETE' });
+                const data = await res.json();
+                
+                if (data.success) {
+                    showToast('Strategy deleted successfully', 'ok');
+                    loadHistory();
+                    loadStats();
+                } else {
+                    showToast(data.error || 'Delete failed', 'er');
+                }
+            } catch (err) {
+                console.error('Error deleting:', err);
+                showToast('Failed to delete strategy', 'er');
+            }
+        }
+
+        /* ══════════ TOAST LOGIC ══════════ */
+        function showToast(msg, type) {
+            const toast = document.getElementById('toast');
+            const icon = document.getElementById('toastIcon');
+            const title = document.getElementById('tttl');
+            const message = document.getElementById('tmsg');
+            
+            if(type === 'ok') {
+                icon.innerHTML = '<i class="fas fa-circle-check text-brand-500"></i>';
+                title.textContent = 'Success';
+                toast.classList.replace('border-red-500/20', 'border-brand-500/20');
+            } else {
+                icon.innerHTML = '<i class="fas fa-circle-exclamation text-red-500"></i>';
+                title.textContent = 'Error';
+                toast.classList.replace('border-brand-500/20', 'border-red-500/20');
+            }
+            
+            message.textContent = msg;
+            toast.classList.add('show');
+            
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(closeToast, 4000);
+        }
+
+        function closeToast() {
+            document.getElementById('toast').classList.remove('show');
+        }
+    </script>
+</body>
+</html>

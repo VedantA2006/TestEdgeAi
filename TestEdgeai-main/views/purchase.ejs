@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Buy Credits | QuantAI Studio</title>
+    
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    
+    <script>
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    </script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { 
+                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+                        mono: ['"JetBrains Mono"', 'monospace']
+                    },
+                    colors: {
+                        brand: { 500: '#14b8a6', 600: '#0d9488' },
+                        stackx: { start: '#3B82F6', end: '#8B5CF6' },
+                        surface: { dark: '#0A0A0B', darkBorder: '#1F1F22' }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+        .stackx-gradient { background: linear-gradient(to right, #3b82f6, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        
+        /* Dynamic Glow */
+        .glow-bg { position: fixed; width: 800px; height: 800px; background: radial-gradient(circle, rgba(20,184,166,0.05) 0%, rgba(0,0,0,0) 60%); top: -200px; left: -200px; z-index: -1; pointer-events: none; }
+        .dark .glow-bg { background: radial-gradient(circle, rgba(20,184,166,0.12) 0%, rgba(0,0,0,0) 60%); }
+
+        /* Custom Scrollbars */
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(100, 116, 139, 0.3); border-radius: 4px; }
+
+        /* Component States for JS */
+        .toast-popup { opacity: 0; pointer-events: none; transform: translateY(20px); transition: all 0.3s ease; }
+        .toast-popup.show { opacity: 1; pointer-events: auto; transform: translateY(0); }
+        .loading-overlay { opacity: 0; pointer-events: none; backdrop-filter: blur(0px); transition: all 0.3s ease; }
+        .loading-overlay.show { opacity: 1; pointer-events: auto; backdrop-filter: blur(8px); }
+        
+        /* Animations */
+        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+        .animate-float { animation: float 4s ease-in-out infinite; }
+    </style>
+</head>
+<body class="bg-slate-50 dark:bg-[#0A0A0B] text-slate-900 dark:text-slate-50 antialiased min-h-screen flex flex-col transition-colors duration-300">
+
+    <div class="glow-bg"></div>
+
+    <nav class="sticky top-0 w-full z-50 transition-all duration-300 border-b border-slate-200 dark:border-white/5 bg-white/80 dark:bg-[#0A0A0B]/80 backdrop-blur-md">
+        <div class="max-w-7xl mx-auto px-6">
+            <div class="flex justify-between items-center h-16">
+                
+                <div class="flex items-center gap-6">
+                    <button onclick="window.location.href='/dashboard'" class="flex items-center gap-2 text-xs font-semibold text-slate-500 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white transition-colors bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 px-3 py-1.5 rounded-lg">
+                        <i class="fas fa-arrow-left"></i> Dashboard
+                    </button>
+                    <a href="/" class="hidden sm:flex items-center space-x-3 hover:opacity-80 transition-opacity">
+                        <div class="w-8 h-8 rounded bg-brand-500 flex items-center justify-center shadow-lg shadow-brand-500/30">
+                            <i class="fas fa-layer-group text-white text-sm"></i>
+                        </div>
+                        <div class="flex flex-col justify-center">
+                            <span class="text-xl font-bold tracking-tight leading-none text-slate-900 dark:text-white">QuantAI</span>
+                            <span class="text-[10px] font-semibold text-slate-500 dark:text-slate-400 mt-0.5 tracking-wide uppercase">
+                                By Stack<span class="stackx-gradient font-extrabold">X</span> Lab
+                            </span>
+                        </div>
+                    </a>
+                </div>
+
+                <div class="flex items-center space-x-4">
+                    <div class="flex items-center bg-brand-50 dark:bg-brand-500/10 border border-brand-200 dark:border-brand-500/20 rounded-full px-4 py-1.5">
+                        <i class="fas fa-coins text-brand-500 mr-2 text-sm"></i>
+                        <span class="text-sm font-bold text-brand-600 dark:text-brand-400 font-mono"><%= user.creditTokens %></span>
+                        <span class="text-xs text-brand-500/80 ml-1 font-semibold uppercase tracking-wider hidden sm:inline">credits</span>
+                    </div>
+
+                    <button id="themeToggle" class="p-2 rounded-full hover:bg-slate-200 dark:hover:bg-white/10 transition-colors text-slate-600 dark:text-slate-400">
+                        <i class="fas fa-moon dark:hidden"></i>
+                        <i class="fas fa-sun hidden dark:block"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="flex-1 max-w-6xl mx-auto w-full px-4 sm:px-6 py-12 flex flex-col">
+        
+        <div class="text-center max-w-2xl mx-auto mb-16">
+            <h1 class="text-3xl md:text-5xl font-extrabold text-slate-900 dark:text-white tracking-tight mb-4">Choose Your Package</h1>
+            <p class="text-slate-500 dark:text-slate-400 text-sm md:text-base leading-relaxed">
+                Scale your algorithmic research. Credits never expire and can be used interchangeably across all backtest tiers.
+            </p>
+            <div class="mt-6 inline-flex items-center gap-3 bg-white dark:bg-[#111113] border border-slate-200 dark:border-white/10 rounded-2xl px-5 py-3 shadow-sm animate-float">
+                <div class="w-10 h-10 rounded-full bg-brand-50 dark:bg-brand-500/10 flex items-center justify-center">
+                    <i class="fas fa-wallet text-brand-500 text-lg"></i>
+                </div>
+                <div class="text-left">
+                    <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Current Balance</div>
+                    <div class="text-lg font-bold text-slate-900 dark:text-white font-mono leading-none"><%= user.creditTokens %> <span class="text-xs text-slate-500 font-sans">credits</span></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid md:grid-cols-3 gap-6 lg:gap-8 mb-24 max-w-5xl mx-auto w-full">
+            
+            <div class="bg-white dark:bg-[#111113] border border-slate-200 dark:border-white/10 rounded-3xl p-6 sm:p-8 flex flex-col shadow-sm hover:shadow-xl hover:border-blue-500/50 transition-all group">
+                <div class="w-14 h-14 rounded-2xl bg-blue-50 dark:bg-blue-500/10 text-blue-500 flex items-center justify-center text-2xl mb-6 group-hover:scale-110 transition-transform">
+                    <i class="fas fa-seedling"></i>
+                </div>
+                <h3 class="text-xl font-bold text-slate-900 dark:text-white mb-1">Starter Credits</h3>
+                <div class="flex items-baseline gap-2 mb-2">
+                    <span class="text-4xl font-extrabold text-blue-500 font-mono tracking-tight">50</span>
+                    <span class="text-sm font-semibold text-slate-500">credits</span>
+                </div>
+                <div class="text-2xl font-bold text-slate-900 dark:text-white mb-8">₹499 <span class="text-xs font-semibold text-slate-400">+ GST</span></div>
+                
+                <ul class="flex-1 space-y-4 mb-8">
+                    <li class="flex items-start gap-3 text-sm text-slate-600 dark:text-slate-300"><i class="fas fa-check-circle text-green-500 mt-0.5"></i> Run 16 QUICK Backtests</li>
+                    <li class="flex items-start gap-3 text-sm text-slate-600 dark:text-slate-300"><i class="fas fa-check-circle text-green-500 mt-0.5"></i> ...or 4 DEEP Backtests</li>
+                    <li class="flex items-start gap-3 text-sm text-slate-600 dark:text-slate-300"><i class="fas fa-check-circle text-green-500 mt-0.5"></i> Valid for 1 year</li>
+                    <li class="flex items-start gap-3 text-sm text-slate-400 dark:text-slate-600"><i class="fas fa-circle-info mt-0.5"></i> Credits are interchangeable</li>
+                </ul>
+                <button onclick="buyPackage('quick')" class="w-full bg-slate-100 dark:bg-[#161618] hover:bg-blue-50 dark:hover:bg-blue-500/10 border border-slate-200 dark:border-white/5 hover:border-blue-200 dark:hover:border-blue-500/30 text-slate-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 font-bold py-3.5 rounded-xl transition-colors flex items-center justify-center gap-2">
+                    <i class="fas fa-cart-shopping"></i> Purchase
+                </button>
+            </div>
+
+            <div class="relative bg-gradient-to-b from-white to-slate-50 dark:from-[#161618] dark:to-[#0A0A0B] border-2 border-brand-500 rounded-3xl p-6 sm:p-8 flex flex-col shadow-xl shadow-brand-500/10 hover:-translate-y-2 transition-all">
+                <div class="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-brand-500 to-emerald-400 text-white text-[10px] font-bold uppercase tracking-widest px-4 py-1.5 rounded-full shadow-sm">Most Popular</div>
+                
+                <div class="w-14 h-14 rounded-2xl bg-brand-500 text-white flex items-center justify-center text-2xl mb-6 shadow-lg shadow-brand-500/30">
+                    <i class="fas fa-fire"></i>
+                </div>
+                <h3 class="text-xl font-bold text-slate-900 dark:text-white mb-1">Pro Credits</h3>
+                <div class="flex items-baseline gap-2 mb-2">
+                    <span class="text-4xl font-extrabold text-brand-500 font-mono tracking-tight">200</span>
+                    <span class="text-sm font-semibold text-slate-500">credits</span>
+                </div>
+                <div class="flex items-center gap-3 mb-8">
+                    <div class="text-2xl font-bold text-slate-900 dark:text-white">₹1,499 <span class="text-xs font-semibold text-slate-400">+ GST</span></div>
+                    <span class="bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400 text-[10px] font-bold px-2 py-1 rounded border border-green-200 dark:border-green-500/30">SAVE 25%</span>
+                </div>
+                
+                <ul class="flex-1 space-y-4 mb-8">
+                    <li class="flex items-start gap-3 text-sm text-slate-700 dark:text-slate-200"><i class="fas fa-check-circle text-green-500 mt-0.5"></i> Run 66 QUICK Backtests</li>
+                    <li class="flex items-start gap-3 text-sm text-slate-700 dark:text-slate-200"><i class="fas fa-check-circle text-green-500 mt-0.5"></i> ...or 16 DEEP Backtests</li>
+                    <li class="flex items-start gap-3 text-sm text-slate-700 dark:text-slate-200"><i class="fas fa-check-circle text-green-500 mt-0.5"></i> Valid for 1 year</li>
+                    <li class="flex items-start gap-3 text-sm text-slate-700 dark:text-slate-200"><i class="fas fa-check-circle text-green-500 mt-0.5"></i> Full API & Export Access</li>
+                </ul>
+                <button onclick="buyPackage('smart')" class="w-full bg-brand-500 hover:bg-brand-600 text-white font-bold py-3.5 rounded-xl transition-colors shadow-lg shadow-brand-500/25 flex items-center justify-center gap-2">
+                    <i class="fas fa-bolt text-yellow-300"></i> Buy Now
+                </button>
+            </div>
+
+            <div class="bg-white dark:bg-[#111113] border border-slate-200 dark:border-white/10 rounded-3xl p-6 sm:p-8 flex flex-col shadow-sm hover:shadow-xl hover:border-purple-500/50 transition-all group">
+                <div class="w-14 h-14 rounded-2xl bg-purple-50 dark:bg-purple-500/10 text-purple-500 flex items-center justify-center text-2xl mb-6 group-hover:scale-110 transition-transform">
+                    <i class="fas fa-crown"></i>
+                </div>
+                <h3 class="text-xl font-bold text-slate-900 dark:text-white mb-1">Elite Credits</h3>
+                <div class="flex items-baseline gap-2 mb-2">
+                    <span class="text-4xl font-extrabold text-purple-500 font-mono tracking-tight">500</span>
+                    <span class="text-sm font-semibold text-slate-500">credits</span>
+                </div>
+                <div class="flex items-center gap-3 mb-8">
+                    <div class="text-2xl font-bold text-slate-900 dark:text-white">₹2,999 <span class="text-xs font-semibold text-slate-400">+ GST</span></div>
+                    <span class="bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400 text-[10px] font-bold px-2 py-1 rounded border border-green-200 dark:border-green-500/30">SAVE 40%</span>
+                </div>
+                
+                <ul class="flex-1 space-y-4 mb-8">
+                    <li class="flex items-start gap-3 text-sm text-slate-600 dark:text-slate-300"><i class="fas fa-check-circle text-green-500 mt-0.5"></i> Run 166 QUICK Backtests</li>
+                    <li class="flex items-start gap-3 text-sm text-slate-600 dark:text-slate-300"><i class="fas fa-check-circle text-green-500 mt-0.5"></i> ...or 41 DEEP Backtests</li>
+                    <li class="flex items-start gap-3 text-sm text-slate-600 dark:text-slate-300"><i class="fas fa-check-circle text-green-500 mt-0.5"></i> Valid for 2 years</li>
+                    <li class="flex items-start gap-3 text-sm text-slate-600 dark:text-slate-300"><i class="fas fa-check-circle text-green-500 mt-0.5"></i> Priority GPU Queue</li>
+                </ul>
+                <button onclick="buyPackage('research')" class="w-full bg-slate-900 dark:bg-white hover:bg-slate-800 dark:hover:bg-slate-200 text-white dark:text-slate-900 font-bold py-3.5 rounded-xl transition-colors flex items-center justify-center gap-2">
+                    <i class="fas fa-crown text-yellow-500"></i> Go Premium
+                </button>
+            </div>
+
+        </div>
+
+        <div class="mb-24 mx-auto w-full">
+            <h2 class="text-2xl font-bold text-center text-slate-900 dark:text-white mb-8">Full Feature Comparison</h2>
+            <div class="bg-white dark:bg-[#111113] border border-slate-200 dark:border-white/5 rounded-3xl shadow-sm overflow-x-auto">
+                <table class="w-full text-left border-collapse min-w-[900px]">
+                    <thead>
+                        <tr>
+                            <th class="p-6 w-[20%] border-b border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-[#0A0A0B]">
+                                <span class="text-xs font-bold text-slate-500 uppercase tracking-wider">Features</span>
+                            </th>
+                            <th class="p-6 w-[26%] border-b border-l border-slate-200 dark:border-white/5">
+                                <div class="text-sm font-bold text-blue-500 flex items-center gap-2 mb-1"><i class="fas fa-binoculars"></i> Quick</div>
+                                <div class="text-[10px] font-mono text-slate-500 bg-slate-100 dark:bg-[#161618] inline-block px-2 py-0.5 rounded">1 Credit / Run</div>
+                            </th>
+                            <th class="p-6 w-[26%] border-b border-l border-slate-200 dark:border-white/5 bg-brand-50/30 dark:bg-brand-500/5 relative">
+                                <div class="absolute top-0 left-0 w-full h-1 bg-brand-500"></div>
+                                <div class="text-sm font-bold text-brand-500 flex items-center gap-2 mb-1"><i class="fas fa-chart-line"></i> Smart</div>
+                                <div class="text-[10px] font-mono text-brand-600 dark:text-brand-400 bg-brand-100 dark:bg-brand-500/20 inline-block px-2 py-0.5 rounded border border-brand-200 dark:border-brand-500/30">4 Credits / Run</div>
+                            </th>
+                            <th class="p-6 w-[26%] border-b border-l border-slate-200 dark:border-white/5">
+                                <div class="text-sm font-bold text-purple-500 flex items-center gap-2 mb-1"><i class="fas fa-flask"></i> Research</div>
+                                <div class="text-[10px] font-mono text-slate-500 bg-slate-100 dark:bg-[#161618] inline-block px-2 py-0.5 rounded">16 Credits / Run</div>
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody class="text-sm">
+                        <tr class="border-b border-slate-100 dark:border-white/5 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
+                            <td class="p-4 pl-6 font-semibold text-slate-700 dark:text-slate-300">Purpose</td>
+                            <td class="p-4 border-l border-slate-100 dark:border-white/5 text-slate-600 dark:text-slate-400">Validation & idea testing</td>
+                            <td class="p-4 border-l border-slate-100 dark:border-white/5 text-slate-600 dark:text-slate-400 bg-brand-50/10 dark:bg-brand-500/5">Active trader analysis</td>
+                            <td class="p-4 border-l border-slate-100 dark:border-white/5 text-slate-600 dark:text-slate-400">Research & optimization</td>
+                        </tr>
+                        <tr class="border-b border-slate-100 dark:border-white/5 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
+                            <td class="p-4 pl-6 font-semibold text-slate-700 dark:text-slate-300">Best For</td>
+                            <td class="p-4 border-l border-slate-100 dark:border-white/5 text-slate-600 dark:text-slate-400">Beginners, fast checks</td>
+                            <td class="p-4 border-l border-slate-100 dark:border-white/5 text-slate-600 dark:text-slate-400 bg-brand-50/10 dark:bg-brand-500/5">Active traders</td>
+                            <td class="p-4 border-l border-slate-100 dark:border-white/5 text-slate-600 dark:text-slate-400">Serious traders, premium users</td>
+                        </tr>
+                        <tr class="border-b border-slate-100 dark:border-white/5 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
+                            <td class="p-4 pl-6 font-semibold text-slate-700 dark:text-slate-300">Input Limit</td>
+                            <td class="p-4 border-l border-slate-100 dark:border-white/5 text-slate-600 dark:text-slate-400">600 words</td>
+                            <td class="p-4 border-l border-slate-100 dark:border-white/5 text-slate-600 dark:text-slate-400 bg-brand-50/10 dark:bg-brand-500/5">1,500 words</td>
+                            <td class="p-4 border-l border-slate-100 dark:border-white/5 text-slate-600 dark:text-slate-400">3,000 words</td>
+                        </tr>
+                        <tr class="border-b border-slate-100 dark:border-white/5 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
+                            <td class="p-4 pl-6 font-semibold text-slate-700 dark:text-slate-300">Assets</td>
+                            <td class="p-4 border-l border-slate-100 dark:border-white/5 text-slate-600 dark:text-slate-400">1 asset</td>
+                            <td class="p-4 border-l border-slate-100 dark:border-white/5 text-slate-600 dark:text-slate-400 bg-brand-50/10 dark:bg-brand-500/5">Up to 3 assets</td>
+                            <td class="p-4 border-l border-slate-100 dark:border-white/5 text-slate-600 dark:text-slate-400">Up to 5 assets</td>
+                        </tr>
+                        <tr class="border-b border-slate-100 dark:border-white/5 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
+                            <td class="p-4 pl-6 font-semibold text-slate-700 dark:text-slate-300">Timeframes Available</td>
+                            <td class="p-4 border-l border-slate-100 dark:border-white/5 text-slate-600 dark:text-slate-400">15m, 1h, 4h</td>
+                            <td class="p-4 border-l border-slate-100 dark:border-white/5 text-slate-600 dark:text-slate-400 bg-brand-50/10 dark:bg-brand-500/5">5m, 15m, 30m, 1h, 4h, 1d</td>
+                            <td class="p-4 border-l border-slate-100 dark:border-white/5 text-slate-600 dark:text-slate-400">1m, 5m, 15m, 30m, 1h, 4h, 1d</td>
+                        </tr>
+                        <tr class="border-b border-slate-100 dark:border-white/5 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
+                            <td class="p-4 pl-6 font-semibold text-slate-700 dark:text-slate-300">Data History Limit</td>
+                            <td class="p-4 border-l border-slate-100 dark:border-white/5 text-slate-600 dark:text-slate-400">Up to 1 year</td>
+                            <td class="p-4 border-l border-slate-100 dark:border-white/5 text-slate-600 dark:text-slate-400 bg-brand-50/10 dark:bg-brand-500/5">Up to 10 years</td>
+                            <td class="p-4 border-l border-slate-100 dark:border-white/5 text-slate-600 dark:text-slate-400 font-semibold text-purple-500">Max available</td>
+                        </tr>
+                        <tr class="border-b border-slate-100 dark:border-white/5 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
+                            <td class="p-4 pl-6 font-semibold text-slate-700 dark:text-slate-300">Complexity</td>
+                            <td class="p-4 border-l border-slate-100 dark:border-white/5 text-slate-600 dark:text-slate-400">Up to 5 indicators</td>
+                            <td class="p-4 border-l border-slate-100 dark:border-white/5 text-slate-600 dark:text-slate-400 bg-brand-50/10 dark:bg-brand-500/5">Up to 10 indicators</td>
+                            <td class="p-4 border-l border-slate-100 dark:border-white/5 text-slate-600 dark:text-slate-400">Advanced, multi-condition</td>
+                        </tr>
+                        <tr class="border-b border-slate-100 dark:border-white/5 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
+                            <td class="p-4 pl-6 font-semibold text-slate-700 dark:text-slate-300">Runs / Optimization</td>
+                            <td class="p-4 border-l border-slate-100 dark:border-white/5 text-slate-600 dark:text-slate-400">1 run</td>
+                            <td class="p-4 border-l border-slate-100 dark:border-white/5 text-slate-600 dark:text-slate-400 bg-brand-50/10 dark:bg-brand-500/5">1 main run</td>
+                            <td class="p-4 border-l border-slate-100 dark:border-white/5 text-slate-600 dark:text-slate-400">3 scenarios / comparison</td>
+                        </tr>
+                        <tr class="border-b border-slate-100 dark:border-white/5 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
+                            <td class="p-4 pl-6 font-semibold text-slate-700 dark:text-slate-300">Metrics</td>
+                            <td class="p-4 border-l border-slate-100 dark:border-white/5 text-slate-600 dark:text-slate-400">Basic</td>
+                            <td class="p-4 border-l border-slate-100 dark:border-white/5 text-slate-600 dark:text-slate-400 bg-brand-50/10 dark:bg-brand-500/5">Advanced</td>
+                            <td class="p-4 border-l border-slate-100 dark:border-white/5 text-slate-600 dark:text-slate-400">Premium</td>
+                        </tr>
+                        <tr class="border-b border-slate-100 dark:border-white/5 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
+                            <td class="p-4 pl-6 font-semibold text-slate-700 dark:text-slate-300">AI Analysis</td>
+                            <td class="p-4 border-l border-slate-100 dark:border-white/5 text-slate-400 dark:text-slate-600"><i class="fas fa-xmark"></i> Minimal</td>
+                            <td class="p-4 border-l border-slate-100 dark:border-white/5 text-slate-600 dark:text-slate-400 bg-brand-50/10 dark:bg-brand-500/5"><i class="fas fa-check text-green-500"></i> Yes</td>
+                            <td class="p-4 border-l border-slate-100 dark:border-white/5 text-slate-600 dark:text-slate-400 font-semibold text-purple-500"><i class="fas fa-brain"></i> Deep Insights</td>
+                        </tr>
+                        <tr class="border-b border-slate-100 dark:border-white/5 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
+                            <td class="p-4 pl-6 font-semibold text-slate-700 dark:text-slate-300">Export</td>
+                            <td class="p-4 border-l border-slate-100 dark:border-white/5 text-slate-400 dark:text-slate-600"><i class="fas fa-xmark"></i> No</td>
+                            <td class="p-4 border-l border-slate-100 dark:border-white/5 text-slate-600 dark:text-slate-400 bg-brand-50/10 dark:bg-brand-500/5"><i class="fas fa-check text-green-500"></i> Yes</td>
+                            <td class="p-4 border-l border-slate-100 dark:border-white/5 text-slate-600 dark:text-slate-400"><i class="fas fa-star text-yellow-500"></i> Full + Premium PDF</td>
+                        </tr>
+                        <tr class="border-b border-slate-100 dark:border-white/5 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
+                            <td class="p-4 pl-6 font-semibold text-slate-700 dark:text-slate-300">Execution Priority</td>
+                            <td class="p-4 border-l border-slate-100 dark:border-white/5 text-slate-600 dark:text-slate-400">Standard Queue</td>
+                            <td class="p-4 border-l border-slate-100 dark:border-white/5 text-brand-500 font-semibold bg-brand-50/10 dark:bg-brand-500/5">Faster Queue</td>
+                            <td class="p-4 border-l border-slate-100 dark:border-white/5 text-purple-500 font-bold">Priority GPU</td>
+                        </tr>
+                        <tr class="hover:bg-slate-50 dark:hover:bg-white/5 transition-colors">
+                            <td class="p-4 pl-6 font-semibold text-slate-700 dark:text-slate-300">Credits Validity</td>
+                            <td class="p-4 border-l border-slate-100 dark:border-white/5 text-slate-600 dark:text-slate-400">1 Year</td>
+                            <td class="p-4 border-l border-slate-100 dark:border-white/5 text-slate-600 dark:text-slate-400 bg-brand-50/10 dark:bg-brand-500/5">1 Year</td>
+                            <td class="p-4 border-l border-slate-100 dark:border-white/5 text-purple-500 font-bold">2 Years</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="grid md:grid-cols-2 gap-12 max-w-5xl mx-auto w-full">
+            
+            <div>
+                <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-6">Buy with Confidence</h3>
+                <div class="flex flex-col gap-4">
+                    <div class="flex items-center gap-4 bg-white dark:bg-[#111113] border border-slate-200 dark:border-white/5 p-4 rounded-2xl shadow-sm">
+                        <div class="w-10 h-10 rounded-full bg-blue-50 dark:bg-blue-500/10 flex items-center justify-center flex-shrink-0 text-blue-500"><i class="fas fa-shield-halved"></i></div>
+                        <div>
+                            <div class="font-bold text-sm text-slate-900 dark:text-white">Secure Payments via Razorpay</div>
+                            <div class="text-xs text-slate-500">256-bit SSL encrypted transactions.</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-4 bg-white dark:bg-[#111113] border border-slate-200 dark:border-white/5 p-4 rounded-2xl shadow-sm">
+                        <div class="w-10 h-10 rounded-full bg-green-50 dark:bg-green-500/10 flex items-center justify-center flex-shrink-0 text-green-500"><i class="fas fa-rotate-left"></i></div>
+                        <div>
+                            <div class="font-bold text-sm text-slate-900 dark:text-white">7-Day Refund Policy</div>
+                            <div class="text-xs text-slate-500">Not satisfied? Get a full refund on unused credits.</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-4 bg-white dark:bg-[#111113] border border-slate-200 dark:border-white/5 p-4 rounded-2xl shadow-sm">
+                        <div class="w-10 h-10 rounded-full bg-brand-50 dark:bg-brand-500/10 flex items-center justify-center flex-shrink-0 text-brand-500"><i class="fas fa-clock"></i></div>
+                        <div>
+                            <div class="font-bold text-sm text-slate-900 dark:text-white">Long Validity</div>
+                            <div class="text-xs text-slate-500">Credits are valid for 1-2 years based on your plan.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-6">Frequently Asked Questions</h3>
+                <div class="flex flex-col gap-4">
+                    <div class="bg-white dark:bg-[#111113] border border-slate-200 dark:border-white/5 p-5 rounded-2xl shadow-sm">
+                        <h4 class="font-bold text-sm text-slate-900 dark:text-white mb-2 flex items-start gap-2">
+                            <i class="fas fa-circle-question text-brand-500 mt-0.5"></i> Can I upgrade later?
+                        </h4>
+                        <p class="text-xs text-slate-500 leading-relaxed">Yes! You can purchase additional credits anytime. They are additive and can be used across all backtest tiers.</p>
+                    </div>
+                    <div class="bg-white dark:bg-[#111113] border border-slate-200 dark:border-white/5 p-5 rounded-2xl shadow-sm">
+                        <h4 class="font-bold text-sm text-slate-900 dark:text-white mb-2 flex items-start gap-2">
+                            <i class="fas fa-circle-question text-brand-500 mt-0.5"></i> Are credits deducted if a test fails?
+                        </h4>
+                        <p class="text-xs text-slate-500 leading-relaxed">No. Credits are only deducted when our AI successfully executes your strategy. Logic errors won't cost you.</p>
+                    </div>
+                    <div class="bg-white dark:bg-[#111113] border border-slate-200 dark:border-white/5 p-5 rounded-2xl shadow-sm">
+                        <h4 class="font-bold text-sm text-slate-900 dark:text-white mb-2 flex items-start gap-2">
+                            <i class="fas fa-circle-question text-brand-500 mt-0.5"></i> Which payment methods work?
+                        </h4>
+                        <p class="text-xs text-slate-500 leading-relaxed">We accept Credit/Debit Cards, Net Banking, and UPI via our Razorpay integration.</p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <div id="loadingOverlay" class="loading-overlay fixed inset-0 bg-slate-900/30 dark:bg-black/60 z-[100] flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-[#111113] border border-slate-200 dark:border-white/10 rounded-3xl p-8 max-w-sm w-full text-center shadow-2xl">
+            <i class="fas fa-circle-notch fa-spin text-4xl text-brand-500 mb-4"></i>
+            <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-1">Processing Payment</h3>
+            <p class="text-sm text-slate-500">Please do not close or refresh this window.</p>
+        </div>
+    </div>
+
+    <div id="toast" class="toast-popup fixed bottom-6 right-6 bg-white dark:bg-[#161618] border border-slate-200 dark:border-white/10 rounded-xl shadow-2xl p-4 flex items-start gap-3 z-[200] max-w-sm">
+        <div id="toastIcon" class="mt-0.5 text-lg"></div>
+        <div class="flex-1">
+            <h4 id="toastTitle" class="text-sm font-bold text-slate-900 dark:text-white mb-0.5">Notification</h4>
+            <p id="tmsg" class="text-xs text-slate-500 dark:text-slate-400">Message goes here</p>
+        </div>
+        <button onclick="closeToast()" class="text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors">
+            <i class="fas fa-xmark"></i>
+        </button>
+    </div>
+
+    <script>
+        let currentPackage = null;
+        let toastTimer = null;
+
+        // Theme Toggle Setup
+        document.getElementById('themeToggle').addEventListener('click', () => {
+            document.documentElement.classList.toggle('dark');
+            localStorage.theme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+        });
+
+        // ════ Razorpay & Purchase Logic (Preserved) ════
+        async function buyPackage(pkgKey) {
+            currentPackage = pkgKey;
+            showLoading(true);
+
+            try {
+                console.log('📦 Purchasing package:', pkgKey);
+                
+                const res = await fetch('/purchase/create-order', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ package: pkgKey })
+                });
+
+                const data = await res.json();
+                console.log('📥 Response:', data);
+
+                if (!res.ok || !data.success) {
+                    throw new Error(data.error || 'Failed to create order');
+                }
+
+                // Check Dark Mode to style Razorpay Modal
+                const isDark = document.documentElement.classList.contains('dark');
+                const themeColor = isDark ? '#14b8a6' : '#0F2444'; // Brand color or Navy
+
+                // Open Razorpay Checkout
+                const options = {
+                    key: data.order.key_id,
+                    amount: data.order.amount,
+                    currency: data.order.currency,
+                    name: data.order.name,
+                    description: data.order.description,
+                    order_id: data.order.id,
+                    prefill: {
+                        name: data.order.prefill.name,
+                        email: data.order.prefill.email,
+                        contact: ''
+                    },
+                    theme: {
+                        color: themeColor
+                    },
+                    handler: function(response) {
+                        handlePaymentSuccess(response, data.order);
+                    },
+                    modal: {
+                        ondismiss: function() {
+                            showLoading(false);
+                            showToast('Payment cancelled', 'er');
+                        }
+                    }
+                };
+
+                const rzp = new Razorpay(options);
+                
+                rzp.on('payment.failed', function(response) {
+                    showLoading(false);
+                    console.error('Payment failed:', response);
+                    showToast('Payment failed: ' + (response.error?.description || 'Unknown error'), 'er');
+                });
+
+                rzp.open();
+            } catch (err) {
+                showLoading(false);
+                console.error('Error:', err);
+                showToast('Error: ' + err.message, 'er');
+            }
+        }
+
+        async function handlePaymentSuccess(response, orderData) {
+            try {
+                const res = await fetch('/purchase/verify', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        razorpay_order_id: response.razorpay_order_id,
+                        razorpay_payment_id: response.razorpay_payment_id,
+                        razorpay_signature: response.razorpay_signature,
+                        package: orderData.package
+                    })
+                });
+
+                const data = await res.json();
+
+                if (data.success) {
+                    showLoading(false);
+                    showToast('✓ Payment successful! ' + data.credits + ' credits added', 'ok');
+                    setTimeout(() => {
+                        window.location.href = '/purchase/success?transaction_id=' + data.transactionId + '&credits=' + data.credits;
+                    }, 1500);
+                } else {
+                    throw new Error(data.error || 'Verification failed');
+                }
+            } catch (err) {
+                showLoading(false);
+                console.error('Verification error:', err);
+                showToast('Verification failed. Contact support with payment ID: ' + response.razorpay_payment_id, 'er');
+            }
+        }
+
+        // ════ UI Helper Functions ════
+        function showLoading(show) {
+            const overlay = document.getElementById('loadingOverlay');
+            if (overlay) {
+                if (show) overlay.classList.add('show');
+                else overlay.classList.remove('show');
+            }
+        }
+
+        function showToast(msg, type) {
+            const toast = document.getElementById('toast');
+            const icon = document.getElementById('toastIcon');
+            const title = document.getElementById('toastTitle');
+            const message = document.getElementById('tmsg');
+            
+            if(type === 'ok') {
+                icon.innerHTML = '<i class="fas fa-circle-check text-brand-500"></i>';
+                title.textContent = 'Success';
+                toast.classList.replace('border-red-500/20', 'border-brand-500/20');
+            } else {
+                icon.innerHTML = '<i class="fas fa-circle-exclamation text-red-500"></i>';
+                title.textContent = 'Error';
+                toast.classList.replace('border-brand-500/20', 'border-red-500/20');
+            }
+            
+            message.textContent = msg;
+            toast.classList.add('show');
+            
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(closeToast, 4000);
+        }
+
+        function closeToast() {
+            document.getElementById('toast').classList.remove('show');
+        }
+    </script>
+</body>
+</html>

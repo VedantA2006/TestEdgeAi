@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login | QuantAI Studio</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    
+    <script>
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    </script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['"Plus Jakarta Sans"', 'sans-serif'] },
+                    colors: {
+                        brand: { 500: '#14b8a6', 600: '#0d9488' },
+                        stackx: { start: '#3B82F6', end: '#8B5CF6' },
+                        surface: { dark: '#0A0A0B', darkBorder: '#1F1F22' }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .stackx-gradient { background: linear-gradient(to right, #3b82f6, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        
+        /* Dynamic Glow based on theme */
+        .glow-bg { position: absolute; width: 800px; height: 800px; background: radial-gradient(circle, rgba(20,184,166,0.05) 0%, rgba(0,0,0,0) 60%); top: -200px; left: -200px; z-index: -1; pointer-events: none; }
+        .dark .glow-bg { background: radial-gradient(circle, rgba(20,184,166,0.12) 0%, rgba(0,0,0,0) 60%); }
+        
+        .glass-panel { background: rgba(255, 255, 255, 0.6); backdrop-filter: blur(16px); border: 1px solid rgba(0, 0, 0, 0.05); }
+        .dark .glass-panel { background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.05); }
+    </style>
+</head>
+<body class="bg-white dark:bg-[#0A0A0B] text-slate-900 dark:text-slate-50 antialiased min-h-screen flex overflow-hidden transition-colors duration-300">
+
+    <div class="hidden lg:flex lg:w-1/2 relative flex-col justify-between p-12 border-r border-slate-200 dark:border-white/5 bg-slate-50 dark:bg-[#0A0A0B] transition-colors duration-300">
+        <div class="glow-bg"></div>
+
+        <a href="/" class="flex items-center space-x-3 z-10 w-max hover:opacity-80 transition-opacity">
+            <div class="w-8 h-8 rounded bg-brand-500 flex items-center justify-center shadow-lg shadow-brand-500/30">
+                <i class="fas fa-layer-group text-white text-sm"></i>
+            </div>
+            <div class="flex flex-col justify-center">
+                <span class="text-xl font-bold tracking-tight leading-none text-slate-900 dark:text-white">QuantAI</span>
+                <span class="text-[10px] font-semibold text-slate-500 mt-0.5 tracking-wide uppercase">
+                    By Stack<span class="stackx-gradient font-extrabold">X</span> Lab
+                </span>
+            </div>
+        </a>
+
+        <div class="z-10 max-w-md">
+            <div class="glass-panel rounded-2xl p-8 shadow-xl mb-8 relative overflow-hidden transition-colors duration-300">
+                <div class="absolute -top-10 -right-10 w-32 h-32 bg-brand-500/20 blur-3xl rounded-full pointer-events-none"></div>
+                
+                <i class="fas fa-quote-left text-brand-500/40 text-3xl mb-4"></i>
+                <p class="text-lg text-slate-700 dark:text-slate-300 font-medium leading-relaxed mb-6">
+                    "The natural language backtesting engine has completely transformed our workflow. We iterate on strategies in minutes instead of days."
+                </p>
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-800 border border-slate-300 dark:border-white/10 flex items-center justify-center text-xs font-bold text-slate-600 dark:text-slate-400">ER</div>
+                    <div>
+                        <div class="text-sm font-bold text-slate-900 dark:text-white">Elena R.</div>
+                        <div class="text-xs text-slate-500">Quantitative Researcher</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="z-10 text-xs text-slate-500 font-medium">
+            &copy; 2024 StackX Lab. All rights reserved.
+        </div>
+    </div>
+
+    <div class="w-full lg:w-1/2 flex items-center justify-center p-6 sm:p-12 relative overflow-y-auto bg-white dark:bg-[#0A0A0B] transition-colors duration-300">
+        
+        <a href="/" class="absolute top-8 left-6 flex lg:hidden items-center space-x-3 z-10">
+            <div class="w-8 h-8 rounded bg-brand-500 flex items-center justify-center shadow-lg shadow-brand-500/30">
+                <i class="fas fa-layer-group text-white text-sm"></i>
+            </div>
+            <span class="text-xl font-bold tracking-tight text-slate-900 dark:text-white">QuantAI</span>
+        </a>
+
+        <button id="themeToggle" class="absolute top-8 right-6 p-2.5 rounded-full bg-slate-100 dark:bg-[#111113] border border-slate-200 dark:border-white/5 hover:bg-slate-200 dark:hover:bg-white/10 transition-all text-slate-600 dark:text-slate-400 shadow-sm z-10">
+            <i class="fas fa-moon dark:hidden text-sm"></i>
+            <i class="fas fa-sun hidden dark:block text-sm"></i>
+        </button>
+
+        <div class="w-full max-w-sm space-y-8 mt-12 lg:mt-0">
+            <div class="text-center lg:text-left">
+                <h2 class="text-3xl font-bold text-slate-900 dark:text-white mb-2 tracking-tight">Welcome back</h2>
+                <p class="text-slate-500 dark:text-slate-400 text-sm">Log in to your account to continue building.</p>
+            </div>
+
+            <% if (typeof error !== 'undefined' && error) { %>
+            <div class="bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-red-600 dark:text-red-400 px-4 py-3 rounded-lg text-sm flex items-start space-x-3 transition-colors duration-300">
+                <i class="fas fa-circle-exclamation mt-0.5"></i>
+                <span><%= error %></span>
+            </div>
+            <% } %>
+
+            <form action="/auth/login" method="POST" class="space-y-5">
+                <div class="space-y-2">
+                    <label for="username" class="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Username</label>
+                    <input type="text" id="username" name="username" required
+                        class="w-full bg-slate-50 dark:bg-[#111113] border border-slate-200 dark:border-white/10 rounded-lg px-4 py-3 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-colors placeholder-slate-400 dark:placeholder-slate-600 shadow-sm"
+                        placeholder="Enter your username">
+                </div>
+
+                <div class="space-y-2">
+                    <div class="flex items-center justify-between">
+                        <label for="password" class="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Password</label>
+                        <a href="/auth/forgot-password" class="text-xs text-brand-500 hover:text-brand-600 dark:hover:text-brand-400 font-medium transition-colors">Forgot password?</a>
+                    </div>
+                    <input type="password" id="password" name="password" required
+                        class="w-full bg-slate-50 dark:bg-[#111113] border border-slate-200 dark:border-white/10 rounded-lg px-4 py-3 text-sm text-slate-900 dark:text-white focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-colors placeholder-slate-400 dark:placeholder-slate-600 shadow-sm"
+                        placeholder="••••••••">
+                </div>
+
+                <button type="submit"
+                    class="w-full bg-brand-500 hover:bg-brand-600 text-white font-semibold py-3.5 rounded-lg transition-colors shadow-lg shadow-brand-500/20 mt-2">
+                    Sign In
+                </button>
+            </form>
+
+            <div class="text-center text-sm text-slate-500 dark:text-slate-400 pt-6 border-t border-slate-200 dark:border-white/5 transition-colors duration-300">
+                Don't have an account?
+                <a href="/auth/signup" class="text-brand-500 font-semibold hover:text-brand-600 dark:hover:text-brand-400 transition-colors ml-1">Sign up for free</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const html = document.documentElement;
+        const themeBtn = document.getElementById('themeToggle');
+        
+        themeBtn.addEventListener('click', () => {
+            html.classList.toggle('dark');
+            localStorage.theme = html.classList.contains('dark') ? 'dark' : 'light';
+        });
+    </script>
+</body>
+</html>

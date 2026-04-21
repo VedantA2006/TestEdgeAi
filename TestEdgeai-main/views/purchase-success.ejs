@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Payment Successful - QuantAI Studio</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+  <style>
+    :root{--bg:#EEF2F7;--glass-b:rgba(255,255,255,.75);--bdr:rgba(255,255,255,.85);--blur:blur(24px);--navy:#0F2444;--ok:#059669;--sa:#C2820A;--t900:#060F1F;--t700:#334155;--t500:#64748B;--fs:'DM Sans',sans-serif;--fm:'JetBrains Mono',monospace;--r-xl:20px}
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:var(--fs);background:var(--bg);color:var(--t700);min-height:100vh;display:flex;align-items:center;justify-content:center}
+    #bgMesh{position:fixed;inset:0;z-index:0;pointer-events:none;background:radial-gradient(ellipse 70% 55% at 10% 35%, rgba(2,132,199,.13) 0%,transparent 60%),linear-gradient(145deg,#EBF4FF 0%,#F5F7FA 45%,#EEF0F5 100%);}
+    @keyframes popIn{0%{opacity:0;transform:scale(.8)}100%{opacity:1;transform:scale(1)}}
+    @keyframes confetti{0%{transform:translateY(0) rotate(0)}100%{transform:translateY(100vh) rotate(720deg)}}
+    .success-card{background:var(--glass-b);backdrop-filter:var(--blur);border:1px solid var(--bdr);border-radius:var(--r-xl);padding:48px;max-width:480px;width:90%;text-align:center;position:relative;z-index:1;animation:popIn .4s ease both}
+    .success-icon{width:80px;height:80px;background:rgba(5,150,105,.1);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 24px}
+    .success-icon i{font-size:40px;color:var(--ok)}
+    .success-title{font-size:28px;font-weight:800;color:var(--t900);margin-bottom:8px}
+    .success-sub{font-size:14px;color:var(--t500);margin-bottom:24px}
+    .credits-box{background:rgba(194,130,10,.1);border:1px solid rgba(194,130,10,.3);border-radius:var(--r-xl);padding:20px;margin-bottom:24px}
+    .credits-amount{font-size:42px;font-weight:800;color:var(--sa);font-family:var(--fm);margin-bottom:4px}
+    .credits-label{font-size:13px;color:var(--t500)}
+    .details-box{background:rgba(255,255,255,.5);border-radius:var(--r-xl);padding:16px;margin-bottom:24px;text-align:left}
+    .detail-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(100,116,139,.1)}
+    .detail-row:last-child{border-bottom:none}
+    .detail-label{font-size:13px;color:var(--t500)}
+    .detail-value{font-size:13px;font-weight:600;color:var(--t900);font-family:var(--fm)}
+    .btn-primary{background:linear-gradient(135deg,var(--navy),#1D4ED8);color:#fff;padding:14px 32px;border:none;border-radius:var(--r-xl);font-size:14px;font-weight:700;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:8px}
+    .btn-primary:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(15,36,95,.3)}
+    .btn-secondary{background:rgba(255,255,255,.55);color:var(--t700);padding:14px 32px;border:1px solid var(--bdr);border-radius:var(--r-xl);font-size:14px;font-weight:700;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:8px;margin-left:8px}
+    .btn-secondary:hover{background:rgba(255,255,255,.82)}
+    .confetti{position:fixed;width:10px;height:10px;background:var(--ok);animation:confetti 3s linear infinite;top:-10px;z-index:0}
+  </style>
+</head>
+<body>
+  <div id="bgMesh"></div>
+  
+  <!-- Confetti -->
+  <script>
+    for(let i=0;i<50;i++){
+      const c=document.createElement('div');
+      c.className='confetti';
+      c.style.left=Math.random()*100+'vw';
+      c.style.background=['#059669','#C2820A','#0284C7','#7C3AED','#DC2626'][Math.floor(Math.random()*5)];
+      c.style.animationDelay=Math.random()*2+'s';
+      document.body.appendChild(c);
+    }
+  </script>
+
+  <div class="success-card">
+    <div class="success-icon">
+      <i class="fa-solid fa-circle-check"></i>
+    </div>
+    <h1 class="success-title">Payment Successful!</h1>
+    <p class="success-sub">Your credits have been added to your account</p>
+    
+    <div class="credits-box">
+      <div class="credits-amount">+<%= credits %></div>
+      <div class="credits-label">Credits Added</div>
+    </div>
+
+    <% if (transaction) { %>
+      <div class="details-box">
+        <div class="detail-row">
+          <span class="detail-label">Transaction ID</span>
+          <span class="detail-value"><%= transaction.razorpayPaymentId || 'N/A' %></span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Amount Paid</span>
+          <span class="detail-value">₹<%= transaction.amount %></span>
+        </div>
+        <div class="detail-row">
+          <span class="detail-label">Date</span>
+          <span class="detail-value"><%= new Date(transaction.createdAt).toLocaleDateString() %></span>
+        </div>
+      </div>
+    <% } %>
+
+    <div>
+      <a href="/dashboard" class="btn-primary">
+        <i class="fa-solid fa-chart-line"></i>Go to Dashboard
+      </a>
+      <a href="/purchase/history" class="btn-secondary">
+        <i class="fa-solid fa-receipt"></i>View History
+      </a>
+    </div>
+  </div>
+</body>
+</html>

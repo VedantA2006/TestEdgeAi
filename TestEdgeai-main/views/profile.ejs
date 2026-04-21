@@ -1,0 +1,712 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Profile | QuantAI Studio</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    
+    <script>
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        } else {
+            document.documentElement.classList.remove('dark');
+        }
+    </script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { 
+                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+                        mono: ['"JetBrains Mono"', 'monospace']
+                    },
+                    colors: {
+                        brand: { 500: '#14b8a6', 600: '#0d9488' },
+                        stackx: { start: '#3B82F6', end: '#8B5CF6' },
+                        surface: { dark: '#0A0A0B', darkBorder: '#1F1F22' }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .font-mono { font-family: 'JetBrains Mono', monospace; }
+        .stackx-gradient { background: linear-gradient(to right, #3b82f6, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        
+        /* Dynamic Glow */
+        .glow-bg { position: fixed; width: 800px; height: 800px; background: radial-gradient(circle, rgba(20,184,166,0.05) 0%, rgba(0,0,0,0) 60%); top: -200px; left: -200px; z-index: -1; pointer-events: none; }
+        .dark .glow-bg { background: radial-gradient(circle, rgba(20,184,166,0.12) 0%, rgba(0,0,0,0) 60%); }
+
+        /* Component States for JS bindings */
+        .dropdown-menu { opacity: 0; pointer-events: none; transform: translateY(10px); transition: all 0.2s ease; }
+        .dropdown-menu.open { opacity: 1; pointer-events: auto; transform: translateY(0); }
+        .toast-popup { opacity: 0; pointer-events: none; transform: translateY(20px); transition: all 0.3s ease; }
+        .toast-popup.show { opacity: 1; pointer-events: auto; transform: translateY(0); }
+        
+        /* Pack Selection for Buy Modal */
+        .pack { transition: all 0.2s; border: 2px solid transparent; }
+        .pack.sel { border-color: #14b8a6; background: rgba(20, 184, 166, 0.05); }
+        .dark .pack.sel { background: rgba(20, 184, 166, 0.15); }
+    </style>
+</head>
+<body class="bg-slate-50 dark:bg-[#0A0A0B] text-slate-900 dark:text-slate-50 antialiased min-h-screen flex flex-col transition-colors duration-300">
+
+    <div class="glow-bg"></div>
+
+    <nav class="sticky top-0 w-full z-50 transition-all duration-300 border-b border-slate-200 dark:border-white/5 bg-white/80 dark:bg-[#0A0A0B]/80 backdrop-blur-md">
+        <div class="max-w-7xl mx-auto px-6">
+            <div class="flex justify-between items-center h-16">
+                
+                <a href="/" class="flex items-center space-x-3 hover:opacity-80 transition-opacity">
+                    <div class="w-8 h-8 rounded bg-brand-500 flex items-center justify-center shadow-lg shadow-brand-500/30">
+                        <i class="fas fa-layer-group text-white text-sm"></i>
+                    </div>
+                    <div class="flex flex-col justify-center">
+                        <span class="text-xl font-bold tracking-tight leading-none">QuantAI</span>
+                        <span class="text-[10px] font-semibold text-slate-500 dark:text-slate-400 mt-0.5 tracking-wide uppercase">
+                            By Stack<span class="stackx-gradient font-extrabold">X</span> Lab
+                        </span>
+                    </div>
+                </a>
+
+                <div class="flex items-center space-x-4">
+                    <div id="crPill" class="hidden sm:flex items-center bg-slate-100 dark:bg-[#111113] border border-slate-200 dark:border-white/10 rounded-full pl-4 pr-1 py-1 cursor-pointer hover:border-brand-500/50 transition-colors">
+                        <div class="flex flex-col mr-3 leading-none">
+                            <span class="text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">Credits</span>
+                            <span id="navCr" class="text-sm font-bold text-brand-500 font-mono"><%= user.creditTokens %></span>
+                        </div>
+                        <button id="btnBuyNav" class="bg-brand-500 hover:bg-brand-600 text-white text-xs font-bold px-3 py-1.5 rounded-full transition-colors shadow-sm">
+                            <i class="fas fa-plus mr-1"></i>Buy
+                        </button>
+                    </div>
+
+                    <button id="themeToggle" class="p-2 rounded-full hover:bg-slate-200 dark:hover:bg-white/10 transition-colors text-slate-600 dark:text-slate-400">
+                        <i class="fas fa-moon dark:hidden"></i>
+                        <i class="fas fa-sun hidden dark:block"></i>
+                    </button>
+
+                    <div id="uw" class="relative">
+                        <div id="uTrig" class="flex items-center space-x-2 bg-white dark:bg-[#111113] border border-slate-200 dark:border-white/10 rounded-full pl-1 pr-3 py-1 cursor-pointer hover:bg-slate-50 dark:hover:bg-white/5 transition-colors shadow-sm">
+                            <div class="w-7 h-7 rounded-full bg-gradient-to-br from-blue-600 to-brand-500 flex items-center justify-center text-xs font-bold text-white uppercase">
+                                <%= user.username.charAt(0) %>
+                            </div>
+                            <span class="text-sm font-semibold text-slate-700 dark:text-slate-300 max-w-[100px] truncate"><%= user.username %></span>
+                            <i id="uChev" class="fas fa-chevron-down text-[10px] text-slate-400 transition-transform duration-200"></i>
+                        </div>
+
+                        <div id="udd" class="dropdown-menu absolute right-0 mt-2 w-56 bg-white dark:bg-[#111113] border border-slate-200 dark:border-white/10 rounded-xl shadow-xl z-50 overflow-hidden backdrop-blur-xl">
+                            <div class="px-4 py-3 bg-slate-50 dark:bg-[#0A0A0B] border-b border-slate-200 dark:border-white/5">
+                                <div class="text-sm font-bold text-slate-900 dark:text-white truncate"><%= user.username %></div>
+                                <div class="text-xs text-slate-500 mt-1 flex items-center gap-1">
+                                    <i class="fas fa-coins text-brand-500"></i>
+                                    <strong id="ddCr" class="text-brand-500 font-mono"><%= user.creditTokens %></strong> credits
+                                </div>
+                            </div>
+                            <div class="py-1">
+                                <a href="/profile" class="flex items-center px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">
+                                    <i class="fas fa-user w-5 text-slate-400"></i> My Profile
+                                </a>
+                                <a href="/history" class="flex items-center px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">
+                                    <i class="fas fa-clock-rotate-left w-5 text-slate-400"></i> Backtest History
+                                </a>
+                                <a href="/transactions" class="flex items-center px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">
+                                    <i class="fas fa-receipt w-5 text-slate-400"></i> Transactions
+                                </a>
+                                <a href="/dashboard" class="flex items-center px-4 py-2 text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-white/5 transition-colors">
+                                    <i class="fas fa-chart-line w-5 text-slate-400"></i> Dashboard
+                                </a>
+                                <div class="border-t border-slate-200 dark:border-white/5 my-1"></div>
+                                <a href="/logout" class="flex items-center px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-colors">
+                                    <i class="fas fa-right-from-bracket w-5"></i> Logout
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="flex-1 max-w-6xl mx-auto w-full px-4 sm:px-6 py-8">
+        
+        <div class="bg-white dark:bg-[#111113] border border-slate-200 dark:border-surface-darkBorder rounded-3xl shadow-sm overflow-hidden mb-6">
+            
+            <div class="bg-slate-100 dark:bg-[#0A0A0B] border-b border-slate-200 dark:border-white/5 p-6 sm:p-8 flex flex-col sm:flex-row items-center gap-6 text-center sm:text-left">
+                <div class="w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-600 to-brand-500 flex items-center justify-center text-3xl font-bold text-white shadow-lg shadow-brand-500/20 flex-shrink-0 uppercase">
+                    <%= user.username.charAt(0) %>
+                </div>
+                <div class="flex-1">
+                    <h1 class="text-2xl font-bold text-slate-900 dark:text-white tracking-tight mb-1"><%= user.username %></h1>
+                    <div class="text-sm text-slate-500 dark:text-slate-400 mb-4 flex items-center justify-center sm:justify-start gap-2">
+                        <i class="fas fa-envelope"></i> <%= user.email %>
+                    </div>
+                    <div class="flex flex-wrap items-center justify-center sm:justify-start gap-3">
+                        <div class="bg-white dark:bg-[#161618] border border-slate-200 dark:border-white/10 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-2">
+                            <i class="fas fa-calendar text-slate-400"></i> Joined <%= new Date(user.createdAt).toLocaleDateString('en-US', {month:'short', year:'numeric'}) %>
+                        </div>
+                        <div class="bg-white dark:bg-[#161618] border border-slate-200 dark:border-white/10 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-2">
+                            <i class="fas fa-flask text-slate-400"></i> <span id="totalRuns" class="font-mono">0</span> backtests
+                        </div>
+                        <div class="bg-white dark:bg-[#161618] border border-slate-200 dark:border-white/10 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-600 dark:text-slate-300 flex items-center gap-2">
+                            <i class="fas fa-circle-check text-green-500"></i> <span id="successRuns" class="font-mono">0</span> successful
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="p-6 sm:p-8 grid lg:grid-cols-3 gap-6">
+                <div class="lg:col-span-2 grid grid-cols-2 sm:grid-cols-4 gap-4">
+                    <div class="bg-slate-50 dark:bg-[#0A0A0B] border border-slate-200 dark:border-white/5 rounded-2xl p-5 text-center hover:border-brand-500/30 transition-colors">
+                        <div id="statCredits" class="text-3xl font-bold text-brand-500 font-mono mb-1"><%= user.creditTokens %></div>
+                        <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Available Credits</div>
+                    </div>
+                    <div class="bg-slate-50 dark:bg-[#0A0A0B] border border-slate-200 dark:border-white/5 rounded-2xl p-5 text-center hover:border-brand-500/30 transition-colors">
+                        <div id="statTotalRuns" class="text-3xl font-bold text-slate-800 dark:text-white font-mono mb-1">0</div>
+                        <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Total Backtests</div>
+                    </div>
+                    <div class="bg-slate-50 dark:bg-[#0A0A0B] border border-slate-200 dark:border-white/5 rounded-2xl p-5 text-center hover:border-brand-500/30 transition-colors">
+                        <div id="statSuccess" class="text-3xl font-bold text-green-500 font-mono mb-1">0</div>
+                        <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Successful</div>
+                    </div>
+                    <div class="bg-slate-50 dark:bg-[#0A0A0B] border border-slate-200 dark:border-white/5 rounded-2xl p-5 text-center hover:border-brand-500/30 transition-colors">
+                        <div id="statFailed" class="text-3xl font-bold text-red-500 font-mono mb-1">0</div>
+                        <div class="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Failed</div>
+                    </div>
+                </div>
+
+                <div class="relative bg-gradient-to-br from-slate-800 to-slate-900 dark:from-[#161618] dark:to-[#0A0A0B] border border-slate-700 dark:border-white/10 rounded-2xl p-6 text-white shadow-xl overflow-hidden">
+                    <div class="absolute -right-12 -top-12 w-40 h-40 bg-brand-500/20 blur-3xl rounded-full"></div>
+                    
+                    <div class="relative z-10 flex justify-between items-start mb-6">
+                        <div>
+                            <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Current Balance</div>
+                            <div id="ccBalance" class="text-4xl font-bold font-mono tracking-tight"><%= user.creditTokens %></div>
+                            <div class="text-xs text-slate-400 mt-1">Credits never expire</div>
+                        </div>
+                        <i class="fas fa-coins text-2xl text-brand-400 opacity-80"></i>
+                    </div>
+                    <div class="relative z-10 flex gap-3">
+                        <button id="btnBuyCredits" class="flex-1 bg-brand-500 hover:bg-brand-600 text-white text-sm font-semibold py-2.5 rounded-lg transition-colors shadow-lg shadow-brand-500/20 flex items-center justify-center gap-2">
+                            <i class="fas fa-cart-plus"></i> Buy Credits
+                        </button>
+                        <button onclick="window.location.href='/transactions'" class="bg-white/10 hover:bg-white/20 border border-white/10 text-white text-sm font-semibold px-4 py-2.5 rounded-lg transition-colors flex items-center justify-center" title="View Transactions">
+                            <i class="fas fa-receipt"></i>
+                        </button>
+                        <button id="btnViewHistory" class="bg-white/10 hover:bg-white/20 border border-white/10 text-white text-sm font-semibold px-4 py-2.5 rounded-lg transition-colors flex items-center justify-center">
+                            <i class="fas fa-clock-rotate-left"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid lg:grid-cols-3 gap-6">
+            
+            <div class="lg:col-span-2 bg-white dark:bg-[#111113] border border-slate-200 dark:border-surface-darkBorder rounded-3xl shadow-sm overflow-hidden flex flex-col h-[500px]">
+                <div class="px-6 pt-6 border-b border-slate-200 dark:border-white/5 flex gap-2">
+                    <button class="tab act pb-4 px-4 text-sm font-semibold border-b-2 border-brand-500 text-brand-500 transition-colors" data-tab="activity">Activity</button>
+                    <button class="tab pb-4 px-4 text-sm font-semibold border-b-2 border-transparent text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors" data-tab="settings">Settings</button>
+                </div>
+                
+                <div class="p-0 overflow-y-auto flex-1">
+                    <div id="tab-activity" class="h-full">
+                        <div id="activityList" class="flex flex-col divide-y divide-slate-100 dark:divide-white/5">
+                            <div class="flex flex-col items-center justify-center h-full min-h-[300px] text-slate-500">
+                                <i class="fas fa-spinner fa-spin text-2xl mb-3"></i>
+                                <span class="text-sm">Loading activity...</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="tab-settings" class="hidden p-6 sm:p-8">
+                        <form id="settingsForm" class="max-w-md space-y-6">
+                            <div class="space-y-2">
+                                <label class="text-xs font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-2">
+                                    <i class="fas fa-user text-slate-400"></i> Username
+                                </label>
+                                <input type="text" value="<%= user.username %>" disabled class="w-full bg-slate-50 dark:bg-[#0A0A0B] border border-slate-200 dark:border-white/10 rounded-lg px-4 py-3 text-sm text-slate-500 dark:text-slate-400 cursor-not-allowed">
+                                <p class="text-[10px] text-slate-400">Username cannot be changed.</p>
+                            </div>
+                            <div class="space-y-2">
+                                <label class="text-xs font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-2">
+                                    <i class="fas fa-envelope text-slate-400"></i> Email Address
+                                </label>
+                                <input type="email" value="<%= user.email %>" disabled class="w-full bg-slate-50 dark:bg-[#0A0A0B] border border-slate-200 dark:border-white/10 rounded-lg px-4 py-3 text-sm text-slate-500 dark:text-slate-400 cursor-not-allowed">
+                                <p class="text-[10px] text-slate-400">Contact support to change email.</p>
+                            </div>
+                            <div class="space-y-2">
+                                <label class="text-xs font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-2">
+                                    <i class="fas fa-calendar text-slate-400"></i> Member Since
+                                </label>
+                                <input type="text" value="<%= new Date(user.createdAt).toLocaleDateString('en-US', {weekday:'long', year:'numeric', month:'long', day:'numeric'}) %>" disabled class="w-full bg-slate-50 dark:bg-[#0A0A0B] border border-slate-200 dark:border-white/10 rounded-lg px-4 py-3 text-sm text-slate-500 dark:text-slate-400 cursor-not-allowed">
+                            </div>
+                            <div class="space-y-2">
+                                <label class="text-xs font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-2">
+                                    <i class="fas fa-id-badge text-slate-400"></i> User ID
+                                </label>
+                                <input type="text" value="<%= user._id %>" disabled class="w-full bg-slate-50 dark:bg-[#0A0A0B] border border-slate-200 dark:border-white/10 rounded-lg px-4 py-3 text-sm font-mono text-slate-500 dark:text-slate-400 cursor-not-allowed">
+                            </div>
+                        </form>
+
+                        <div class="mt-8 pt-8 border-t border-slate-200 dark:border-white/5">
+                            <h4 class="text-sm font-bold text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+                                <i class="fas fa-lock text-slate-400"></i> Change Password
+                            </h4>
+                            <form id="passwordForm" class="max-w-md space-y-4">
+                                <div class="space-y-2">
+                                    <label class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Current Password</label>
+                                    <input type="password" id="currentPassword" required class="w-full bg-white dark:bg-[#0A0A0B] border border-slate-200 dark:border-white/10 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-colors">
+                                </div>
+                                <div class="space-y-2">
+                                    <label class="text-xs font-semibold text-slate-500 uppercase tracking-wider">New Password</label>
+                                    <input type="password" id="newPassword" required minlength="6" class="w-full bg-white dark:bg-[#0A0A0B] border border-slate-200 dark:border-white/10 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-colors">
+                                    <p class="text-[10px] text-slate-400">Minimum 6 characters</p>
+                                </div>
+                                <div class="space-y-2">
+                                    <label class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Confirm New Password</label>
+                                    <input type="password" id="confirmPassword" required minlength="6" class="w-full bg-white dark:bg-[#0A0A0B] border border-slate-200 dark:border-white/10 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-brand-500 focus:ring-1 focus:ring-brand-500 transition-colors">
+                                </div>
+                                <button type="submit" id="btnChangePassword" class="w-full bg-brand-500 hover:bg-brand-600 text-white font-semibold py-3 rounded-lg transition-colors shadow-lg shadow-brand-500/20 flex items-center justify-center gap-2">
+                                    <i class="fas fa-key"></i> Update Password
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white dark:bg-[#111113] border border-slate-200 dark:border-surface-darkBorder rounded-3xl shadow-sm overflow-hidden flex flex-col h-[500px]">
+                <div class="px-6 py-5 border-b border-slate-200 dark:border-white/5 flex items-center justify-between bg-slate-50 dark:bg-[#0A0A0B]">
+                    <h3 class="text-sm font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                        <i class="fas fa-bolt text-brand-500"></i> Recent Runs
+                    </h3>
+                    <a href="/history" class="text-xs font-semibold text-brand-500 hover:text-brand-600 transition-colors">View All &rarr;</a>
+                </div>
+                <div class="p-0 overflow-y-auto flex-1">
+                    <div id="recentBacktests" class="flex flex-col divide-y divide-slate-100 dark:divide-white/5">
+                        <div class="flex flex-col items-center justify-center h-full min-h-[300px] text-slate-500">
+                            <i class="fas fa-spinner fa-spin text-2xl mb-3"></i>
+                            <span class="text-sm">Loading runs...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <div id="buyModal" class="fixed inset-0 bg-slate-900/40 dark:bg-black/60 backdrop-blur-sm z-[100] hidden items-center justify-center p-4">
+        <div class="bg-white dark:bg-[#111113] border border-slate-200 dark:border-white/10 rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col transform transition-all duration-300 scale-95 opacity-0" id="buyModalInner">
+            
+            <div class="px-6 py-5 border-b border-slate-200 dark:border-white/5 flex items-start justify-between bg-slate-50 dark:bg-[#0A0A0B]">
+                <div>
+                    <h2 class="text-xl font-bold text-slate-900 dark:text-white tracking-tight">Add Credits</h2>
+                    <p class="text-xs text-slate-500 mt-1">Credits never expire. Run complex strategies instantly.</p>
+                </div>
+                <button id="btnCloseBuy" class="text-slate-400 hover:text-slate-600 dark:hover:text-white bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 rounded-lg p-2 transition-colors">
+                    <i class="fas fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="p-6 overflow-y-auto">
+                <div class="grid grid-cols-3 gap-3 sm:gap-4 mb-6">
+                    <div id="pk50" class="pack sel bg-slate-50 dark:bg-[#0A0A0B] rounded-2xl p-4 text-center cursor-pointer border-slate-200 dark:border-white/10 hover:border-brand-500/50">
+                        <div class="text-2xl mb-2">🪙</div>
+                        <div class="text-xl font-bold text-slate-900 dark:text-white mb-1">50</div>
+                        <div class="text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-3">Starter</div>
+                        <div class="inline-block bg-slate-200 dark:bg-white/10 text-slate-600 dark:text-slate-300 text-xs font-mono font-semibold px-2 py-1 rounded-md">$4.99</div>
+                    </div>
+                    <div id="pk200" class="pack bg-slate-50 dark:bg-[#0A0A0B] rounded-2xl p-4 text-center cursor-pointer border-slate-200 dark:border-white/10 hover:border-brand-500/50 relative">
+                        <div class="absolute -top-2.5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-blue-500 to-brand-500 text-white text-[9px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full shadow-sm">Popular</div>
+                        <div class="text-2xl mb-2">💰</div>
+                        <div class="text-xl font-bold text-brand-500 mb-1">200</div>
+                        <div class="text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-3">Active Trader</div>
+                        <div class="inline-block bg-slate-200 dark:bg-white/10 text-slate-600 dark:text-slate-300 text-xs font-mono font-semibold px-2 py-1 rounded-md">$14.99</div>
+                    </div>
+                    <div id="pk500" class="pack bg-slate-50 dark:bg-[#0A0A0B] rounded-2xl p-4 text-center cursor-pointer border-slate-200 dark:border-white/10 hover:border-brand-500/50">
+                        <div class="text-2xl mb-2">💎</div>
+                        <div class="text-xl font-bold text-slate-900 dark:text-white mb-1">500</div>
+                        <div class="text-[9px] font-bold text-slate-500 uppercase tracking-wider mb-3">Pro Value</div>
+                        <div class="inline-block bg-slate-200 dark:bg-white/10 text-slate-600 dark:text-slate-300 text-xs font-mono font-semibold px-2 py-1 rounded-md">$29.99</div>
+                    </div>
+                </div>
+
+                <div class="bg-slate-50 dark:bg-[#0A0A0B] border border-slate-200 dark:border-white/5 rounded-xl p-4 flex items-center justify-between">
+                    <div class="text-sm font-semibold text-slate-600 dark:text-slate-400">Current Balance</div>
+                    <div class="flex items-center gap-2">
+                        <i class="fas fa-coins text-brand-500 text-sm"></i>
+                        <span id="buyBal" class="text-lg font-bold text-slate-900 dark:text-white font-mono"><%= user.creditTokens %></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="px-6 py-4 border-t border-slate-200 dark:border-white/5 flex gap-3 justify-end bg-slate-50 dark:bg-[#0A0A0B]">
+                <button id="btnCancelBuy" class="px-5 py-2.5 rounded-lg text-sm font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-white/10 transition-colors">Cancel</button>
+                <button id="btnConfirmBuy" class="bg-brand-500 hover:bg-brand-600 text-white px-6 py-2.5 rounded-lg text-sm font-semibold transition-colors shadow-lg shadow-brand-500/20 flex items-center gap-2">
+                    <i class="fas fa-cart-shopping"></i> Purchase <span id="cfAmt">50</span> Credits
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast-popup fixed bottom-6 right-6 bg-white dark:bg-[#161618] border border-slate-200 dark:border-white/10 rounded-xl shadow-2xl p-4 flex items-start gap-3 z-[200] max-w-sm">
+        <div id="toastIcon" class="mt-0.5 text-lg"></div>
+        <div class="flex-1">
+            <h4 id="toastTitle" class="text-sm font-bold text-slate-900 dark:text-white mb-0.5">Notification</h4>
+            <p id="tmsg" class="text-xs text-slate-500 dark:text-slate-400">Message goes here</p>
+        </div>
+        <button id="btnClsToast" class="text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors">
+            <i class="fas fa-xmark"></i>
+        </button>
+    </div>
+
+    <script>
+        /* ══════════ STATE ══════════ */
+        var credits = <%= user.creditTokens %>;
+        var selPkAmt = 50;
+        var toastTimer = null;
+
+        /* ══════════ INIT ══════════ */
+        document.addEventListener('DOMContentLoaded', function() {
+            loadStats();
+            loadActivity();
+            loadRecentBacktests();
+            attachEvents();
+        });
+
+        /* ══════════ EVENTS ══════════ */
+        function attachEvents() {
+            // Theme Toggle
+            document.getElementById('themeToggle').addEventListener('click', () => {
+                document.documentElement.classList.toggle('dark');
+                localStorage.theme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
+            });
+
+            // User Dropdown Menu
+            const uTrig = document.getElementById('uTrig');
+            const udd = document.getElementById('udd');
+            const uChev = document.getElementById('uChev');
+            
+            uTrig.addEventListener('click', (e) => {
+                e.stopPropagation();
+                const isOpen = udd.classList.contains('open');
+                if (isOpen) {
+                    udd.classList.remove('open');
+                    uChev.style.transform = 'rotate(0deg)';
+                } else {
+                    udd.classList.add('open');
+                    uChev.style.transform = 'rotate(180deg)';
+                }
+            });
+
+            // Close dropdown when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!udd.contains(e.target) && !uTrig.contains(e.target)) {
+                    udd.classList.remove('open');
+                    uChev.style.transform = 'rotate(0deg)';
+                }
+            });
+
+            // Buy Modal
+            document.getElementById('btnBuyNav').addEventListener('click', (e) => { e.stopPropagation(); openBuy(); });
+            document.getElementById('crPill').addEventListener('click', openBuy);
+            document.getElementById('btnBuyCredits').addEventListener('click', openBuy);
+            document.getElementById('btnViewHistory').addEventListener('click', () => { window.location.href = '/history'; });
+            
+            document.getElementById('btnCloseBuy').addEventListener('click', closeBuy);
+            document.getElementById('btnCancelBuy').addEventListener('click', closeBuy);
+            document.getElementById('btnConfirmBuy').addEventListener('click', confirmBuy);
+            
+            document.getElementById('buyModal').addEventListener('click', function(e) {
+                if (e.target === this) closeBuy();
+            });
+            
+            // Pack selection
+            document.getElementById('pk50').addEventListener('click', () => selPack(50));
+            document.getElementById('pk200').addEventListener('click', () => selPack(200));
+            document.getElementById('pk500').addEventListener('click', () => selPack(500));
+            
+            // Tabs functionality
+            const tabs = document.querySelectorAll('.tab');
+            tabs.forEach(tab => {
+                tab.addEventListener('click', function() {
+                    // Reset styling for all tabs
+                    tabs.forEach(t => {
+                        t.classList.remove('act', 'border-brand-500', 'text-brand-500');
+                        t.classList.add('border-transparent', 'text-slate-500');
+                    });
+                    
+                    // Activate clicked tab
+                    this.classList.add('act', 'border-brand-500', 'text-brand-500');
+                    this.classList.remove('border-transparent', 'text-slate-500');
+                    
+                    // Show correct content
+                    const tabName = this.dataset.tab;
+                    document.getElementById('tab-activity').classList.toggle('hidden', tabName !== 'activity');
+                    document.getElementById('tab-settings').classList.toggle('hidden', tabName !== 'settings');
+                });
+            });
+            
+            // Toast close
+            document.getElementById('btnClsToast').addEventListener('click', closeToast);
+
+            // Password change form
+            document.getElementById('passwordForm').addEventListener('submit', handlePasswordChange);
+        }
+
+        /* ══════════ LOAD DATA (Tailwind Templates) ══════════ */
+        async function loadStats() {
+            try {
+                const res = await fetch('/api/history/stats/summary');
+                const data = await res.json();
+                
+                if (data.success) {
+                    document.getElementById('statTotalRuns').textContent = data.stats.totalRuns;
+                    document.getElementById('statSuccess').textContent = data.stats.completedRuns;
+                    document.getElementById('statFailed').textContent = data.stats.failedRuns;
+                    document.getElementById('totalRuns').textContent = data.stats.totalRuns;
+                    document.getElementById('successRuns').textContent = data.stats.completedRuns;
+                }
+            } catch (err) {
+                console.error('Error loading stats:', err);
+            }
+        }
+
+        async function loadActivity() {
+            try {
+                const res = await fetch('/api/history?limit=20');
+                const data = await res.json();
+                const container = document.getElementById('activityList');
+                
+                if (!data.success || !data.strategies.length) {
+                    container.innerHTML = `
+                        <div class="flex flex-col items-center justify-center h-full min-h-[300px] text-center p-6">
+                            <div class="w-14 h-14 bg-slate-100 dark:bg-white/5 rounded-2xl flex items-center justify-center text-2xl text-slate-400 mb-4 shadow-sm border border-slate-200 dark:border-white/10">
+                                <i class="fas fa-inbox"></i>
+                            </div>
+                            <h4 class="text-sm font-bold text-slate-900 dark:text-white mb-1">No activity yet</h4>
+                            <p class="text-xs text-slate-500">Run your first backtest to see activity here.</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                container.innerHTML = data.strategies.map(s => {
+                    const isSuccess = s.status === 'completed';
+                    const planIcon = s.plan === 'quick' ? 'fa-binoculars' : s.plan === 'smart' ? 'fa-chart-line' : 'fa-flask';
+                    const iconColor = s.plan === 'quick' ? 'text-blue-500 bg-blue-50 dark:bg-blue-500/10' : s.plan === 'smart' ? 'text-brand-500 bg-brand-50 dark:bg-brand-500/10' : 'text-purple-500 bg-purple-50 dark:bg-purple-500/10';
+                    const badgeColor = isSuccess ? 'bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400 border-green-200 dark:border-green-500/30' : 'bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400 border-red-200 dark:border-red-500/30';
+                    
+                    return `
+                        <div class="flex items-center gap-4 p-5 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors cursor-pointer" onclick="window.location.href='/history'">
+                            <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${iconColor}">
+                                <i class="fas ${planIcon}"></i>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <div class="text-sm font-bold text-slate-900 dark:text-white truncate mb-0.5">${s.assets.join(', ') || 'No assets'} — ${s.plan} backtest</div>
+                                <div class="flex items-center gap-2 text-xs text-slate-500">
+                                    <span>${new Date(s.createdAt).toLocaleString()}</span>
+                                    <span>•</span>
+                                    <span class="font-mono font-semibold text-slate-600 dark:text-slate-400">-${s.creditsUsed} credits</span>
+                                </div>
+                            </div>
+                            <span class="text-[9px] font-bold uppercase tracking-wider px-2 py-1 rounded-md border ${badgeColor}">${s.status}</span>
+                        </div>
+                    `;
+                }).join('');
+            } catch (err) {
+                console.error('Error loading activity:', err);
+            }
+        }
+
+        async function loadRecentBacktests() {
+            try {
+                const res = await fetch('/api/history?limit=5');
+                const data = await res.json();
+                const container = document.getElementById('recentBacktests');
+                
+                if (!data.success || !data.strategies.length) {
+                    container.innerHTML = `
+                        <div class="flex flex-col items-center justify-center h-full min-h-[300px] text-center p-6">
+                            <i class="fas fa-folder-open text-3xl text-slate-300 dark:text-slate-700 mb-3"></i>
+                            <p class="text-xs font-medium text-slate-500">No recent runs.</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                container.innerHTML = data.strategies.map(s => {
+                    const isSuccess = s.status === 'completed';
+                    const iconColor = isSuccess ? 'text-green-500' : 'text-red-500';
+                    const icon = isSuccess ? 'fa-check-circle' : 'fa-circle-xmark';
+                    
+                    return `
+                        <div class="flex items-center gap-3 p-4 hover:bg-slate-50 dark:hover:bg-white/5 transition-colors cursor-pointer" onclick="window.location.href='/history'">
+                            <i class="fas ${icon} ${iconColor} text-base"></i>
+                            <div class="flex-1 min-w-0">
+                                <div class="text-sm font-bold text-slate-900 dark:text-white truncate leading-tight">${s.assets.join(', ') || 'No assets'}</div>
+                                <div class="text-[10px] text-slate-500 mt-0.5">${s.timeframe} • ${new Date(s.createdAt).toLocaleDateString()}</div>
+                            </div>
+                            <div class="text-xs font-mono font-semibold text-slate-400">-${s.creditsUsed}</div>
+                        </div>
+                    `;
+                }).join('');
+            } catch (err) {
+                console.error('Error loading recent backtests:', err);
+            }
+        }
+
+        /* ══════════ BUY CREDITS MODAL LOGIC ══════════ */
+        function openBuy() {
+            const modal = document.getElementById('buyModal');
+            const inner = document.getElementById('buyModalInner');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            // Slight delay for animation to trigger
+            setTimeout(() => {
+                inner.classList.remove('scale-95', 'opacity-0');
+                inner.classList.add('scale-100', 'opacity-100');
+            }, 10);
+        }
+
+        function closeBuy() {
+            const modal = document.getElementById('buyModal');
+            const inner = document.getElementById('buyModalInner');
+            inner.classList.remove('scale-100', 'opacity-100');
+            inner.classList.add('scale-95', 'opacity-0');
+            setTimeout(() => {
+                modal.classList.remove('flex');
+                modal.classList.add('hidden');
+            }, 300);
+        }
+
+        function selPack(amt) {
+            selPkAmt = amt;
+            document.querySelectorAll('.pack').forEach(p => p.classList.remove('sel'));
+            document.getElementById('pk' + amt).classList.add('sel');
+            document.getElementById('cfAmt').textContent = amt;
+        }
+
+        async function confirmBuy() {
+            const btn = document.getElementById('btnConfirmBuy');
+            const originalHTML = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+            btn.disabled = true;
+
+            try {
+                const res = await fetch('/api/credits/buy', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ amount: selPkAmt })
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    credits = data.newBalance;
+                    updateCreditDisplay(credits);
+                    closeBuy();
+                    showToast(`Successfully purchased ${selPkAmt} credits`, 'ok');
+                    loadStats();
+                    loadActivity();
+                } else {
+                    showToast(data.error || 'Purchase failed', 'er');
+                }
+            } catch (err) {
+                showToast('Error: ' + err.message, 'er');
+            } finally {
+                btn.innerHTML = originalHTML;
+                btn.disabled = false;
+            }
+        }
+
+        function updateCreditDisplay(newCredits) {
+            document.getElementById('navCr').textContent = newCredits;
+            document.getElementById('ddCr').textContent = newCredits;
+            document.getElementById('buyBal').textContent = newCredits;
+            document.getElementById('statCredits').textContent = newCredits;
+            document.getElementById('ccBalance').textContent = newCredits;
+        }
+
+        /* ══════════ TOAST LOGIC ══════════ */
+        function showToast(msg, type) {
+            const toast = document.getElementById('toast');
+            const icon = document.getElementById('toastIcon');
+            const title = document.getElementById('toastTitle');
+            const message = document.getElementById('tmsg');
+            
+            if(type === 'ok') {
+                icon.innerHTML = '<i class="fas fa-circle-check text-brand-500"></i>';
+                title.textContent = 'Success';
+                toast.classList.replace('border-red-500/20', 'border-brand-500/20');
+            } else {
+                icon.innerHTML = '<i class="fas fa-circle-exclamation text-red-500"></i>';
+                title.textContent = 'Error';
+                toast.classList.replace('border-brand-500/20', 'border-red-500/20');
+            }
+            
+            message.textContent = msg;
+            toast.classList.add('show');
+            
+            clearTimeout(toastTimer);
+            toastTimer = setTimeout(closeToast, 4000);
+        }
+
+        function closeToast() {
+            document.getElementById('toast').classList.remove('show');
+        }
+
+        /* ══════════ PASSWORD CHANGE LOGIC ══════════ */
+        async function handlePasswordChange(e) {
+            e.preventDefault();
+            
+            const currentPassword = document.getElementById('currentPassword').value;
+            const newPassword = document.getElementById('newPassword').value;
+            const confirmPassword = document.getElementById('confirmPassword').value;
+            
+            // Validate passwords match
+            if (newPassword !== confirmPassword) {
+                showToast('New passwords do not match', 'er');
+                return;
+            }
+            
+            // Validate password length
+            if (newPassword.length < 6) {
+                showToast('Password must be at least 6 characters', 'er');
+                return;
+            }
+            
+            const btn = document.getElementById('btnChangePassword');
+            const originalHTML = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
+            btn.disabled = true;
+            
+            try {
+                const res = await fetch('/auth/change-password', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ currentPassword, newPassword })
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    showToast('Password updated successfully', 'ok');
+                    document.getElementById('passwordForm').reset();
+                } else {
+                    showToast(data.error || 'Failed to update password', 'er');
+                }
+            } catch (err) {
+                showToast('Error: ' + err.message, 'er');
+            } finally {
+                btn.innerHTML = originalHTML;
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>
